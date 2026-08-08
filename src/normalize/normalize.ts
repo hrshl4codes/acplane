@@ -131,6 +131,142 @@ export function turnSeqForIndex(turns: TurnSpan[], index: number): number | null
   return null;
 }
 
+interface ToolAccum {
+  turnSeq: number | null;
+  toolCallId: string;
+  kind?: string;
+  title?: string | null;
+  status?: string | null;
+  rawInput?: unknown;
+  rawOutput?: unknown;
+  locations: string[];
+  diffs: Array<{ path?: string; oldText?: string; newText?: string }>;
+}
+
+function dedupe(values: string[]): string[] {
+  return [...new Set(values)];
+}
+
+export function extractToolCalls(
+  events: RecordedEvent[],
+  turns: TurnSpan[],
+): { toolCalls: ToolCallRow[]; fileTouches: FileTouchRow[] } {
+  const order: string[] = [];
+  const accumulators = new Map<string, ToolAccum>();
+
+  events.forEach((event, index) => {
+    const message = event.msg as Record<string, any> | null;
+    const update = message?.["params"]?.update;
+    if (message?.["method"] !== "session/update" || !update) return;
+    if (update.sessionUpdate !== "tool_call" && update.sessionUpdate !== "tool_call_update") {
+      return;
+    }
+    if (typeof update.toolCallId !== "string") return;
+
+    let accumulator = accumulators.get(update.toolCallId);
+    if (!accumulator) {
+      accumulator = {
+        turnSeq: turnSeqForIndex(turns, index),
+        toolCallId: update.toolCallId,
+        locations: [],
+        diffs: [],
+      };
+      accumulators.set(update.toolCallId, accumulator);
+      order.push(update.toolCallId);
+    }
+
+    if (update.kind !== undefined) accumulator.kind = update.kind;
+    if (update.title !== undefined) accumulator.title = update.title;
+    if (update.status !== undefined) accumulator.status = update.status;
+    if (update.rawInput !== undefined) accumulator.rawInput = update.rawInput;
+    if (update.rawOutput !== undefined) accumulator.rawOutput = update.rawOutput;
+    if (Array.isArray(update.locations)) {
+      for (const location of update.locations) {
+        if (location?.path) accumulator.locations.push(String(location.path));
+      }
+    }
+    if (Array.isArray(update.content)) {
+      for (const content of update.content) {
+        if (content?.type === "diff") {
+          accumulator.diffs.push({
+            path: content.path,
+            oldText: content.oldText,
+            newText: content.newText,
+          });
+        }
+      }
+    }
+  });
+
+  const toolCalls: ToolCallRow[] = [];
+  const fileTouches: FileTouchRow[] = [];
+
+  for (const id of order) {
+    const accumulator = accumulators.get(id)!;
+    const kind = accumulator.kind ?? "other";
+    toolCalls.push({
+      turnSeq: accumulator.turnSeq,
+      toolCallId: id,
+      kind,
+      title: accumulator.title ?? null,
+      status: accumulator.status ?? null,
+      rawInput:
+        accumulator.rawInput !== undefined ? JSON.stringify(accumulator.rawInput) : null,
+      rawOutput:
+        accumulator.rawOutput !== undefined ? JSON.stringify(accumulator.rawOutput) : null,
+    });
+
+    if (kind === "read") {
+      for (const path of dedupe(accumulator.locations)) {
+        fileTouches.push({
+          turnSeq: accumulator.turnSeq,
+          toolCallId: id,
+          path,
+          mode: "read",
+          diff: null,
+        });
+      }
+    } else if (kind === "edit") {
+      if (accumulator.diffs.length > 0) {
+        for (const diff of accumulator.diffs) {
+          fileTouches.push({
+            turnSeq: accumulator.turnSeq,
+            toolCallId: id,
+            path: diff.path ?? accumulator.locations[0] ?? "",
+            mode: diff.oldText === "" ? "create" : "write",
+            diff: JSON.stringify({
+              oldText: diff.oldText ?? "",
+              newText: diff.newText ?? "",
+            }),
+          });
+        }
+      } else {
+        for (const path of dedupe(accumulator.locations)) {
+          fileTouches.push({
+            turnSeq: accumulator.turnSeq,
+            toolCallId: id,
+            path,
+            mode: "write",
+            diff: null,
+          });
+        }
+      }
+    } else if (kind === "delete") {
+      for (const path of dedupe(accumulator.locations)) {
+        fileTouches.push({
+          turnSeq: accumulator.turnSeq,
+          toolCallId: id,
+          path,
+          mode: "delete",
+          diff: null,
+        });
+      }
+    }
+  }
+
+  return { toolCalls, fileTouches };
+}
+
 function extractSession(
   id: string,
   harness: string,
@@ -197,6 +333,7 @@ export function normalizeSession(
   const spans = extractTurns(events);
   const session = extractSession(id, harness, events, spans);
   const turns = spans.map(toTurnRow);
+  const { toolCalls, fileTouches } = extractToolCalls(events, spans);
 
-  return { session, turns, toolCalls: [], fileTouches: [], usage: [] };
+  return { session, turns, toolCalls, fileTouches, usage: [] };
 }
