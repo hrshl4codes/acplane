@@ -1,0 +1,72 @@
+import { randomBytes } from "node:crypto";
+import { homedir } from "node:os";
+import { join } from "node:path";
+import { loadConfig } from "./config.js";
+import { JsonlRecorder } from "./recorder.js";
+import { startPump } from "./pump.js";
+
+export interface CliArgs {
+  harness?: string;
+  config?: string;
+}
+
+function optionValue(argv: string[], index: number): string {
+  const value = argv[index + 1];
+  if (!value || value.startsWith("--")) {
+    throw new Error(`acplane: ${argv[index]} requires a value`);
+  }
+  return value;
+}
+
+export function parseArgs(argv: string[]): CliArgs {
+  const result: CliArgs = {};
+
+  for (let index = 0; index < argv.length; index += 1) {
+    const argument = argv[index]!;
+    if (argument === "--harness") {
+      result.harness = optionValue(argv, index);
+      index += 1;
+    } else if (argument === "--config") {
+      result.config = optionValue(argv, index);
+      index += 1;
+    } else {
+      throw new Error(
+        `acplane: unknown argument "${argument}" (usage: acplane [--harness <name>] [--config <path>])`,
+      );
+    }
+  }
+
+  return result;
+}
+
+export interface RunProxyOptions extends CliArgs {
+  sessionsDir?: string;
+  input?: NodeJS.ReadableStream;
+  output?: NodeJS.WritableStream;
+}
+
+export async function runProxy(options: RunProxyOptions): Promise<number> {
+  const config = loadConfig(options.config);
+  const harnessName = options.harness ?? config.defaultHarness;
+  const harness = config.harnesses[harnessName];
+  if (!harness) throw new Error(`acplane: harness "${harnessName}" not found in config`);
+
+  const sessionsDirectory = options.sessionsDir ?? join(homedir(), ".acplane", "sessions");
+  const timestamp = new Date().toISOString().replace(/[:.]/g, "-");
+  const sessionId = `${timestamp}-${harnessName}-${randomBytes(2).toString("hex")}`;
+  const recorder = new JsonlRecorder(join(sessionsDirectory, `${sessionId}.jsonl`));
+
+  const { exited } = startPump({
+    command: harness.command,
+    args: harness.args,
+    env: harness.env,
+    input: options.input ?? process.stdin,
+    output: options.output ?? process.stdout,
+    taps: {
+      onClientMessage: (_message, raw) => recorder.record("client->harness", raw),
+      onHarnessMessage: (_message, raw) => recorder.record("harness->client", raw),
+    },
+  });
+
+  return exited;
+}
