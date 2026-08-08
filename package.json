@@ -12,7 +12,7 @@
     "typecheck": "tsc --noEmit"
   },
   "engines": {
-    "node": ">=20.11"
+    "node": ">=20.19"
   },
   "license": "Apache-2.0",
   "dependencies": {

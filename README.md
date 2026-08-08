@@ -19,7 +19,7 @@ interrupting traffic between the client and harness.
 
 ## Requirements
 
-- Node.js 20.11 or newer
+- Node.js 20.19 or newer
 - An ACP-compatible client and harness
 
 ## Quickstart
