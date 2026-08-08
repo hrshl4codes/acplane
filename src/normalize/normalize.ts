@@ -325,6 +325,43 @@ function toTurnRow(span: TurnSpan): TurnRow {
   };
 }
 
+function estimateTokens(text: string): number {
+  return Math.ceil(text.length / 4);
+}
+
+export function extractUsage(events: RecordedEvent[], turns: TurnSpan[]): UsageRow[] {
+  return turns.map((turn) => {
+    const response = events.find((event) => {
+      const message = event.msg as Record<string, any> | null;
+      return (
+        event.direction === "harness->client" &&
+        message !== null &&
+        message["id"] === turn.promptId &&
+        Boolean(message["result"])
+      );
+    });
+    const usage = (response?.msg as Record<string, any> | undefined)?.["result"]?._meta?.usage;
+    const tokensIn = usage?.inputTokens ?? usage?.input_tokens;
+    const tokensOut = usage?.outputTokens ?? usage?.output_tokens;
+    if (usage && (typeof tokensIn === "number" || typeof tokensOut === "number")) {
+      return {
+        turnSeq: turn.seq,
+        tokensIn: typeof tokensIn === "number" ? tokensIn : null,
+        tokensOut: typeof tokensOut === "number" ? tokensOut : null,
+        costUsd: typeof usage.costUsd === "number" ? usage.costUsd : null,
+        source: "reported" as const,
+      };
+    }
+    return {
+      turnSeq: turn.seq,
+      tokensIn: estimateTokens(turn.prompt),
+      tokensOut: estimateTokens(turn.finalMessage),
+      costUsd: null,
+      source: "estimated" as const,
+    };
+  });
+}
+
 export function normalizeSession(
   id: string,
   harness: string,
@@ -334,6 +371,7 @@ export function normalizeSession(
   const session = extractSession(id, harness, events, spans);
   const turns = spans.map(toTurnRow);
   const { toolCalls, fileTouches } = extractToolCalls(events, spans);
+  const usage = extractUsage(events, spans);
 
-  return { session, turns, toolCalls, fileTouches, usage: [] };
+  return { session, turns, toolCalls, fileTouches, usage };
 }
