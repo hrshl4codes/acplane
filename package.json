@@ -1,0 +1,27 @@
+{
+  "name": "acplane",
+  "version": "0.0.1",
+  "description": "ACP control plane: transparent proxy, flight recorder, and policy layer for coding agents",
+  "type": "module",
+  "bin": {
+    "acplane": "./bin/acplane.mjs"
+  },
+  "scripts": {
+    "build": "tsc -p tsconfig.build.json",
+    "test": "vitest run",
+    "typecheck": "tsc --noEmit"
+  },
+  "engines": {
+    "node": ">=20.19"
+  },
+  "license": "Apache-2.0",
+  "dependencies": {
+    "yaml": "^2.9.0"
+  },
+  "devDependencies": {
+    "@types/node": "^26.2.0",
+    "tsx": "^4.23.11",
+    "typescript": "^7.0.2",
+    "vitest": "^4.1.10"
+  }
+}
