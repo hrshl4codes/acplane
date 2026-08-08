@@ -1,21 +1,48 @@
 # acplane
 
-`acplane` is a transparent [Agent Client Protocol (ACP)](https://agentclientprotocol.com/)
-proxy for coding agents. Point an ACP-compatible editor at `acplane` instead of
-the underlying harness; `acplane` launches that harness, forwards every message
-without re-serializing it, and records the exchange as a JSONL flight log.
+A transparent proxy for coding agents that records what they actually do.
 
-The recording layer is the foundation for session analysis, file-level lineage,
-policy enforcement, and a local dashboard.
+`acplane` sits between an ACP-compatible editor and the coding agent behind it.
+You point your editor at `acplane` instead of at the harness directly. It
+launches the real harness, passes every message through untouched, and writes
+the full exchange to a JSONL flight log. The agent behaves exactly as it would
+without the proxy in the middle, but now every session leaves a record you own.
 
-## Why
+It speaks the [Agent Client Protocol (ACP)](https://agentclientprotocol.com/),
+so it works with any ACP client and any ACP harness without per-tool
+integration.
 
-Harness logs live inside harness-owned state directories. Recording at the
-protocol boundary provides a neutral account of prompts, responses, tool calls,
-and permission requests without adding content to the agent context.
+## Why this exists
 
-Observation is fail-open: recorder and tap failures are reported without
-interrupting traffic between the client and harness.
+Coding agents keep their logs inside their own state directories, in whatever
+shape each vendor chose, and the agent can rewrite those logs as it runs. Once a
+session ends, questions like "which files did this agent read before it edited
+that one" or "what did it ask permission to do" are hard to answer and easy to
+lose.
+
+Recording at the protocol boundary changes that. Because every prompt, response,
+tool call, and permission request crosses the wire between editor and harness,
+`acplane` captures a complete and neutral account of the session from outside the
+agent's reach. It adds nothing to the model's context and consumes no tokens:
+messages are forwarded byte for byte.
+
+Observation is designed to fail open. If the recorder cannot write, it reports
+the problem and keeps forwarding traffic. A broken flight recorder never grounds
+the plane.
+
+## How it works
+
+```
+  ACP client                    acplane                     harness
+ (Zed, etc.)                                          (Claude Code, Codex)
+      |                            |                           |
+      |  ---- JSON-RPC (stdio) --> |  ---- forwarded as-is --> |
+      |                         [ record ]                     |
+      |  <-- forwarded as-is ----- |  <---- JSON-RPC (stdio) - |
+      |                            |                           |
+                                   v
+                     ~/.acplane/sessions/<id>.jsonl
+```
 
 ## Requirements
 
@@ -31,7 +58,7 @@ npm install
 npm run build
 ```
 
-Create `~/.acplane/config.yaml`:
+Create `~/.acplane/config.yaml` and describe the harness you want to record:
 
 ```yaml
 defaultHarness: claude
@@ -42,8 +69,8 @@ harnesses:
       - "@agentclientprotocol/claude-agent-acp"
 ```
 
-Configure your ACP client to launch `node /absolute/path/to/acplane/bin/acplane.mjs`.
-For Zed, add an agent server to `settings.json`:
+Point your ACP client at `node /absolute/path/to/acplane/bin/acplane.mjs`. In
+Zed, add an agent server to `settings.json`:
 
 ```json
 {
@@ -56,23 +83,44 @@ For Zed, add an agent server to `settings.json`:
 }
 ```
 
-Use the agent normally. Session recordings are written to
-`~/.acplane/sessions/<session-id>.jsonl`.
+Use the agent as you normally would. Recordings land in
+`~/.acplane/sessions/<session-id>.jsonl`, one file per session.
 
-Select another configured harness or configuration file when launching the
-proxy:
+To record a different harness or point at another config file, pass flags when
+launching:
 
 ```sh
 node bin/acplane.mjs --harness codex --config /path/to/acplane.yaml
 ```
 
+## What a recording looks like
+
+Each line is one message, tagged with a direction and a timestamp, with the
+original wire text preserved verbatim:
+
+```json
+{"ts":"2026-08-08T11:41:24.942Z","direction":"client->harness","raw":"{\"jsonrpc\":\"2.0\",\"id\":1,\"method\":\"initialize\"}"}
+```
+
+## Project status
+
+This is the recording foundation, the first piece of a larger design. It works
+and is tested end to end. Building on top of it: normalizing raw logs into a
+queryable session store, file-level lineage across harnesses, a uniform policy
+layer that enforces the same rules regardless of which agent is running, and a
+local dashboard to explore it all.
+
 ## Development
 
 ```sh
-npm test
+npm test        # unit and end-to-end proxy tests
 npm run typecheck
 npm run build
 ```
 
-The test suite includes a deterministic ACP-shaped harness and an end-to-end
-proxy recording flow.
+The suite includes a deterministic ACP-shaped harness and a full proxy
+recording flow, so the core behavior is verified without needing a live agent.
+
+## License
+
+Apache-2.0
