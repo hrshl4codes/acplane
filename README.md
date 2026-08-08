@@ -39,8 +39,20 @@ harnesses:
   claude:
     command: npx
     args:
+      - "-y"
       - "@agentclientprotocol/claude-agent-acp"
+  codex:
+    command: npx
+    args:
+      - "-y"
+      - "@agentclientprotocol/codex-acp"
 ```
+
+Both entries launch ACP adapters that wrap the underlying agent CLI, since the
+agents do not speak ACP over stdio on their own. `acplane` itself is
+harness-agnostic: it proxies and records whatever ACP-compatible command a
+harness entry points at, so adding another agent is a matter of configuration,
+not code.
 
 Configure your ACP client to launch `node /absolute/path/to/acplane/bin/acplane.mjs`.
 For Zed, add an agent server to `settings.json`:
