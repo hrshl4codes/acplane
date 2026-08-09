@@ -20,3 +20,14 @@ test("compareSessions leaves a side null when a session is missing", () => {
   expect(comparison.b).toBeNull();
   db.close();
 });
+
+test("compareSessions reuses one detail when both IDs match", () => {
+  const db = openDb(":memory:");
+  seedTwoSessions(db);
+
+  const comparison = compareSessions(db, "sess-claude", "sess-claude");
+
+  expect(comparison.a).not.toBeNull();
+  expect(comparison.b).toBe(comparison.a);
+  db.close();
+});

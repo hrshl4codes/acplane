@@ -1,5 +1,5 @@
 import { expect, test } from "vitest";
-import { openDb } from "../src/db/schema.js";
+import { openDb, type Db } from "../src/db/schema.js";
 import { sessionDetail } from "../src/dashboard/queries.js";
 import { seedTwoSessions } from "./dashboard/seed.js";
 
@@ -60,5 +60,44 @@ test.each([
 test("sessionDetail returns null for an unknown session", () => {
   const db = openDb(":memory:");
   expect(sessionDetail(db, "nope")).toBeNull();
+  db.close();
+});
+
+test("sessionDetail performs one parameterized summary lookup", () => {
+  const db = openDb(":memory:");
+  seedTwoSessions(db);
+  const executions: Array<{
+    sql: string;
+    method: "all" | "get";
+    args: unknown[];
+  }> = [];
+  const tracingDb = {
+    prepare(sql: string) {
+      const statement = db.prepare(sql) as unknown as {
+        all: (...args: unknown[]) => unknown;
+        get: (...args: unknown[]) => unknown;
+      };
+      return {
+        all: (...args: unknown[]) => {
+          executions.push({ sql, method: "all", args });
+          return statement.all(...args);
+        },
+        get: (...args: unknown[]) => {
+          executions.push({ sql, method: "get", args });
+          return statement.get(...args);
+        },
+      };
+    },
+  } as Db;
+
+  expect(sessionDetail(tracingDb, "sess-claude")?.session.id).toBe("sess-claude");
+  const summaryExecution = executions.find((entry) =>
+    entry.sql.includes("FROM session s"),
+  );
+  expect(summaryExecution).toMatchObject({
+    method: "get",
+    args: [{ sessionId: "sess-claude" }],
+  });
+  expect(summaryExecution?.sql).toContain("s.id = @sessionId");
   db.close();
 });

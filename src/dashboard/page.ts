@@ -67,7 +67,11 @@ export const DASHBOARD_HTML = String.raw`<!doctype html>
 const app = document.getElementById("app");
 const esc = (s) => String(s == null ? "" : s).replace(/[&<>"']/g, (c) => ({ "&":"&amp;","<":"&lt;",">":"&gt;","\"":"&quot;","'":"&#39;" }[c]));
 const j = (url, signal) => fetch(url, { signal }).then((r) => (r.ok ? r.json() : Promise.reject(r.status)));
-const cost = (c) => (c == null ? '<span class="muted">—</span>' : "$" + Number(c).toFixed(2));
+const cost = (c) => {
+  if (c == null) return '<span class="muted">—</span>';
+  const value = Number(c);
+  return value > 0 && value < 0.01 ? "&lt;$0.01" : "$" + value.toFixed(2);
+};
 const token = (value) => value == null ? "—" : esc(value);
 const estMark = (src) => (src === "estimated" || src === "mixed") ? ' <span class="est">(' + esc(src) + ')</span>' : "";
 const emptyRow = (columns) => '<tr><td colspan="' + columns + '" class="muted">—</td></tr>';
@@ -110,7 +114,8 @@ async function sessionsView(generation, signal) {
   const sessions = await j("/api/sessions", signal);
   const rows = sessions.map((s) => {
     const href = esc("#/session/" + encodeURIComponent(s.id));
-    return '<tr class="session-row"><td>' + esc(s.startedAt || "") + '</td><td><a class="session-link" href="' + href + '"><span class="pill">' + esc(s.harness) + '</span></a></td><td>' + esc(s.turnCount) + '</td><td>' + esc(s.toolCallCount) + '</td><td>' + esc(s.fileCount) + '</td><td>' + esc((s.tokensIn || 0) + (s.tokensOut || 0)) + estMark(s.usageSource) + '</td><td>' + cost(s.costUsd) + '</td><td>' + (s.denialCount ? '<span class="badge deny">' + esc(s.denialCount) + '</span>' : "0") + "</td></tr>";
+    const label = esc("Open " + s.harness + " session " + s.id);
+    return '<tr class="session-row"><td>' + esc(s.startedAt || "") + '</td><td><a class="session-link" href="' + href + '" aria-label="' + label + '"><span class="pill">' + esc(s.harness) + '</span></a></td><td>' + esc(s.turnCount) + '</td><td>' + esc(s.toolCallCount) + '</td><td>' + esc(s.fileCount) + '</td><td>' + esc((s.tokensIn || 0) + (s.tokensOut || 0)) + estMark(s.usageSource) + '</td><td>' + cost(s.costUsd) + '</td><td>' + (s.denialCount ? '<span class="badge deny">' + esc(s.denialCount) + '</span>' : "0") + "</td></tr>";
   }).join("");
   commitRoute(generation, routeHeading("Sessions") + tableHtml("Sessions", ["Started", "Harness", "Turns", "Tools", "Files", "Tokens", "Cost", "Denials"], rows), true);
 }
@@ -139,7 +144,10 @@ async function detailView(id, generation, signal) {
 
 async function lineageView(generation, signal) {
   const entries = await j("/api/lineage", signal);
-  const rows = entries.map((entry) => "<tr><td><code>" + esc(entry.path) + "</code></td><td>" + esc(entry.readCount) + "</td><td>" + esc(entry.writeCount) + "</td><td>" + entry.sessions.map((session) => '<span class="pill">' + esc(session.harness) + ": " + esc(session.modes.join("/")) + "</span>").join(" ") + "</td></tr>").join("");
+  const rows = entries.map((entry) => "<tr><td><code>" + esc(entry.path) + "</code></td><td>" + esc(entry.readCount) + "</td><td>" + esc(entry.writeCount) + "</td><td>" + entry.sessions.map((session) => {
+    const href = esc("#/session/" + encodeURIComponent(session.sessionId));
+    return '<span class="pill"><a class="session-link" href="' + href + '"><code>' + esc(session.sessionId) + "</code></a> · " + esc(session.harness) + ": " + esc(session.modes.join("/")) + "</span>";
+  }).join(" ") + "</td></tr>").join("");
   commitRoute(generation, routeHeading("File lineage") + tableHtml("File lineage", ["File", "Reads", "Writes", "Sessions"], rows), true);
 }
 

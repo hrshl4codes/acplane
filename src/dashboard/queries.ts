@@ -24,34 +24,98 @@ export function usageSourceLabel(reported: number, estimated: number): SessionSu
   return "none";
 }
 
-export function sessionSummaries(db: Db): SessionSummary[] {
-  const rows = db
-    .prepare(
-      `SELECT
+type SessionSummaryRow = Omit<SessionSummary, "usageSource"> & {
+  reportedSamples: number;
+  estimatedSamples: number;
+};
+
+function sessionSummaryQuery(filtered: boolean): string {
+  const childFilter = filtered ? "WHERE session_id = @sessionId" : "";
+  const sessionFilter = filtered ? "WHERE s.id = @sessionId" : "";
+  return `WITH
+      turn_totals AS (
+        SELECT session_id, COUNT(*) AS turnCount
+        FROM turn
+        ${childFilter}
+        GROUP BY session_id
+      ),
+      tool_call_totals AS (
+        SELECT session_id, COUNT(*) AS toolCallCount
+        FROM tool_call
+        ${childFilter}
+        GROUP BY session_id
+      ),
+      file_touch_totals AS (
+        SELECT session_id, COUNT(DISTINCT path) AS fileCount
+        FROM file_touch
+        ${childFilter}
+        GROUP BY session_id
+      ),
+      usage_totals AS (
+        SELECT
+          session_id,
+          COALESCE(SUM(tokens_in), 0) AS tokensIn,
+          COALESCE(SUM(tokens_out), 0) AS tokensOut,
+          SUM(cost_usd) AS costUsd,
+          COUNT(CASE WHEN source = 'reported' THEN 1 END) AS reportedSamples,
+          COUNT(CASE WHEN source = 'estimated' THEN 1 END) AS estimatedSamples
+        FROM usage_sample
+        ${childFilter}
+        GROUP BY session_id
+      ),
+      permission_totals AS (
+        SELECT
+          session_id,
+          COUNT(*) AS permissionCount,
+          COUNT(CASE WHEN decision = 'deny' THEN 1 END) AS denialCount,
+          COUNT(CASE WHEN decided_by = 'policy' THEN 1 END) AS policyDecisionCount
+        FROM permission_event
+        ${childFilter}
+        GROUP BY session_id
+      )
+      SELECT
         s.id AS id,
         s.harness AS harness,
         s.started_at AS startedAt,
         s.ended_at AS endedAt,
-        (SELECT COUNT(*) FROM turn t WHERE t.session_id = s.id) AS turnCount,
-        (SELECT COUNT(*) FROM tool_call c WHERE c.session_id = s.id) AS toolCallCount,
-        (SELECT COUNT(DISTINCT f.path) FROM file_touch f WHERE f.session_id = s.id) AS fileCount,
-        (SELECT COALESCE(SUM(u.tokens_in), 0) FROM usage_sample u WHERE u.session_id = s.id) AS tokensIn,
-        (SELECT COALESCE(SUM(u.tokens_out), 0) FROM usage_sample u WHERE u.session_id = s.id) AS tokensOut,
-        (SELECT SUM(u.cost_usd) FROM usage_sample u WHERE u.session_id = s.id) AS costUsd,
-        (SELECT COUNT(*) FROM permission_event p WHERE p.session_id = s.id) AS permissionCount,
-        (SELECT COUNT(*) FROM permission_event p WHERE p.session_id = s.id AND p.decision = 'deny') AS denialCount,
-        (SELECT COUNT(*) FROM permission_event p WHERE p.session_id = s.id AND p.decided_by = 'policy') AS policyDecisionCount,
-        (SELECT COUNT(*) FROM usage_sample u WHERE u.session_id = s.id AND u.source = 'reported') AS reportedSamples,
-        (SELECT COUNT(*) FROM usage_sample u WHERE u.session_id = s.id AND u.source = 'estimated') AS estimatedSamples
+        COALESCE(t.turnCount, 0) AS turnCount,
+        COALESCE(c.toolCallCount, 0) AS toolCallCount,
+        COALESCE(f.fileCount, 0) AS fileCount,
+        COALESCE(u.tokensIn, 0) AS tokensIn,
+        COALESCE(u.tokensOut, 0) AS tokensOut,
+        u.costUsd AS costUsd,
+        COALESCE(p.permissionCount, 0) AS permissionCount,
+        COALESCE(p.denialCount, 0) AS denialCount,
+        COALESCE(p.policyDecisionCount, 0) AS policyDecisionCount,
+        COALESCE(u.reportedSamples, 0) AS reportedSamples,
+        COALESCE(u.estimatedSamples, 0) AS estimatedSamples
       FROM session s
-      ORDER BY s.started_at DESC, s.id ASC`,
-    )
-    .all() as Array<Omit<SessionSummary, "usageSource"> & { reportedSamples: number; estimatedSamples: number }>;
+      LEFT JOIN turn_totals t ON t.session_id = s.id
+      LEFT JOIN tool_call_totals c ON c.session_id = s.id
+      LEFT JOIN file_touch_totals f ON f.session_id = s.id
+      LEFT JOIN usage_totals u ON u.session_id = s.id
+      LEFT JOIN permission_totals p ON p.session_id = s.id
+      ${sessionFilter}
+      ORDER BY s.started_at DESC, s.id ASC`;
+}
 
-  return rows.map(({ reportedSamples, estimatedSamples, ...summary }) => ({
+function toSessionSummary({ reportedSamples, estimatedSamples, ...summary }: SessionSummaryRow): SessionSummary {
+  return {
     ...summary,
     usageSource: usageSourceLabel(reportedSamples, estimatedSamples),
-  }));
+  };
+}
+
+export function sessionSummaries(db: Db): SessionSummary[] {
+  const rows = db.prepare(sessionSummaryQuery(false)).all() as SessionSummaryRow[];
+  return rows.map(toSessionSummary);
+}
+
+function selectSessionSummary(db: Db, id: string): SessionSummary | null {
+  const row = db
+    .prepare(sessionSummaryQuery(true))
+    .get({ sessionId: id }) as SessionSummaryRow | undefined;
+  return row ? toSessionSummary(row) : null;
 }
 
 export interface TimelineTurn {
@@ -76,7 +140,7 @@ export interface SessionDetail {
 }
 
 export function sessionDetail(db: Db, id: string): SessionDetail | null {
-  const session = sessionSummaries(db).find((summary) => summary.id === id);
+  const session = selectSessionSummary(db, id);
   if (!session) return null;
 
   const turnRows = db
@@ -196,5 +260,6 @@ export interface SessionComparison {
 }
 
 export function compareSessions(db: Db, aId: string, bId: string): SessionComparison {
-  return { a: sessionDetail(db, aId), b: sessionDetail(db, bId) };
+  const a = sessionDetail(db, aId);
+  return { a, b: aId === bId ? a : sessionDetail(db, bId) };
 }

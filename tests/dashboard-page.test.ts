@@ -386,6 +386,103 @@ test("session tables preserve row semantics and expose real escaped links", asyn
   expect(harness.app.innerHTML).not.toContain("<unsafe>");
 });
 
+test("duplicate harness session links have distinct safe accessible names", async () => {
+  const ids = ["plain", `unsafe/\"'<id>`];
+  const harness = createPageHarness((url) => {
+    if (url === "/api/sessions") {
+      return ids.map((id) => ({
+        id,
+        startedAt: "now",
+        harness: "shared",
+        turnCount: 0,
+        toolCallCount: 0,
+        fileCount: 0,
+        tokensIn: 0,
+        tokensOut: 0,
+        usageSource: "none",
+        costUsd: null,
+        denialCount: 0,
+      }));
+    }
+    throw new Error(`unexpected request: ${url}`);
+  });
+
+  await harness.route("#/");
+
+  expect(harness.app.innerHTML).toContain('aria-label="Open shared session plain"');
+  expect(harness.app.innerHTML).toContain(
+    'aria-label="Open shared session unsafe/&quot;&#39;&lt;id&gt;"',
+  );
+  expect(harness.app.innerHTML.match(/<a class="session-link"/g)).toHaveLength(2);
+  expect(harness.app.innerHTML).not.toContain("<id>");
+});
+
+test("file lineage visibly distinguishes same-harness sessions with safe links", async () => {
+  const firstId = "session/one";
+  const secondId = `session/\"'<two>`;
+  const harness = createPageHarness((url) => {
+    if (url === "/api/lineage") {
+      return [{
+        path: "src/shared.ts",
+        readCount: 2,
+        writeCount: 0,
+        sessions: [
+          { sessionId: firstId, harness: "shared", modes: ["read"] },
+          { sessionId: secondId, harness: "shared", modes: ["read"] },
+        ],
+      }];
+    }
+    throw new Error(`unexpected request: ${url}`);
+  });
+
+  await harness.route("#/lineage");
+
+  expect(harness.app.innerHTML).toContain(
+    '<a class="session-link" href="#/session/session%2Fone"><code>session/one</code></a>',
+  );
+  expect(harness.app.innerHTML).toContain(
+    '<a class="session-link" href="#/session/session%2F%22&#39;%3Ctwo%3E"><code>session/&quot;&#39;&lt;two&gt;</code></a>',
+  );
+  expect(harness.app.innerHTML.match(/shared: read/g)).toHaveLength(2);
+  expect(harness.app.innerHTML).not.toContain("<two>");
+});
+
+test("catalog and timeline share honest null, zero, sub-cent, and ordinary costs", async () => {
+  const costs = [null, 0, 0.004, 12.345];
+  const sessions = costs.map((costUsd, index) => ({
+    id: `cost-${index}`,
+    startedAt: "now",
+    harness: `cost-${index}`,
+    turnCount: 0,
+    toolCallCount: 0,
+    fileCount: 0,
+    tokensIn: 0,
+    tokensOut: 0,
+    usageSource: "reported",
+    costUsd,
+    denialCount: 0,
+  }));
+  const harness = createPageHarness((url) => {
+    if (url === "/api/sessions") return sessions;
+    throw new Error(`unexpected request: ${url}`);
+  });
+
+  await harness.route("#/");
+
+  const catalog = harness.app.innerHTML;
+  const timeline = costs.map((costUsd) =>
+    harness.evaluate<string>(`turnHtml(${JSON.stringify(turn({ costUsd }))})`),
+  ).join("");
+  for (const html of [catalog, timeline]) {
+    expect(html).toContain('<span class="muted">—</span>');
+    expect(html).toContain("$0.00");
+    expect(html).toContain("&lt;$0.01");
+    expect(html).toContain("$12.35");
+  }
+  expect(catalog.match(/\$0\.00/g)).toHaveLength(1);
+  expect(timeline.match(/\$0\.00/g)).toHaveLength(1);
+});
+
 test("empty session details render an explicit timeline marker", async () => {
   const harness = createPageHarness((url) => {
     if (url === "/api/sessions/empty") return detail("empty");
