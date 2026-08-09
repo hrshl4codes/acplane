@@ -53,3 +53,69 @@ export function sessionSummaries(db: Db): SessionSummary[] {
     usageSource: usageSourceLabel(reportedSamples, estimatedSamples),
   }));
 }
+
+export interface TimelineTurn {
+  seq: number;
+  prompt: string;
+  finalMessage: string;
+  stopReason: string | null;
+  startedAt: string | null;
+  endedAt: string | null;
+  tokensIn: number | null;
+  tokensOut: number | null;
+  costUsd: number | null;
+  usageSource: string | null;
+  toolCalls: Array<{ toolCallId: string; kind: string; title: string | null; status: string | null }>;
+  fileTouches: Array<{ path: string; mode: string }>;
+  permissions: Array<{ toolCallId: string | null; decision: string | null; decidedBy: string | null; rule: string | null }>;
+}
+
+export interface SessionDetail {
+  session: SessionSummary;
+  turns: TimelineTurn[];
+}
+
+export function sessionDetail(db: Db, id: string): SessionDetail | null {
+  const session = sessionSummaries(db).find((summary) => summary.id === id);
+  if (!session) return null;
+
+  const turnRows = db
+    .prepare(`SELECT id, seq, prompt, final_message AS finalMessage, stop_reason AS stopReason, started_at AS startedAt, ended_at AS endedAt FROM turn WHERE session_id = ? ORDER BY seq`)
+    .all(id) as Array<{ id: number; seq: number; prompt: string; finalMessage: string; stopReason: string | null; startedAt: string | null; endedAt: string | null }>;
+  const toolCalls = db
+    .prepare(`SELECT turn_id AS turnId, tool_call_id AS toolCallId, kind, title, status FROM tool_call WHERE session_id = ? ORDER BY id`)
+    .all(id) as Array<{ turnId: number | null; toolCallId: string; kind: string; title: string | null; status: string | null }>;
+  const fileTouches = db
+    .prepare(`SELECT turn_id AS turnId, path, mode FROM file_touch WHERE session_id = ? ORDER BY id`)
+    .all(id) as Array<{ turnId: number | null; path: string; mode: string }>;
+  const permissions = db
+    .prepare(`SELECT turn_id AS turnId, tool_call_id AS toolCallId, decision, decided_by AS decidedBy, rule FROM permission_event WHERE session_id = ? ORDER BY id`)
+    .all(id) as Array<{ turnId: number | null; toolCallId: string | null; decision: string | null; decidedBy: string | null; rule: string | null }>;
+  const usage = db
+    .prepare(`SELECT turn_id AS turnId, tokens_in AS tokensIn, tokens_out AS tokensOut, cost_usd AS costUsd, source FROM usage_sample WHERE session_id = ?`)
+    .all(id) as Array<{ turnId: number | null; tokensIn: number | null; tokensOut: number | null; costUsd: number | null; source: string }>;
+
+  const turns: TimelineTurn[] = turnRows.map((turn) => {
+    const turnUsage = usage.filter((entry) => entry.turnId === turn.id);
+    const hasCost = turnUsage.some((entry) => entry.costUsd != null);
+    const reportedCount = turnUsage.filter((entry) => entry.source === "reported").length;
+    const estimatedCount = turnUsage.filter((entry) => entry.source === "estimated").length;
+    return {
+      seq: turn.seq,
+      prompt: turn.prompt,
+      finalMessage: turn.finalMessage,
+      stopReason: turn.stopReason,
+      startedAt: turn.startedAt,
+      endedAt: turn.endedAt,
+      tokensIn: turnUsage.length ? turnUsage.reduce((sum, entry) => sum + (entry.tokensIn ?? 0), 0) : null,
+      tokensOut: turnUsage.length ? turnUsage.reduce((sum, entry) => sum + (entry.tokensOut ?? 0), 0) : null,
+      costUsd: hasCost ? turnUsage.reduce((sum, entry) => sum + (entry.costUsd ?? 0), 0) : null,
+      usageSource: turnUsage.length ? usageSourceLabel(reportedCount, estimatedCount) : null,
+      toolCalls: toolCalls.filter((call) => call.turnId === turn.id).map(({ toolCallId, kind, title, status }) => ({ toolCallId, kind, title, status })),
+      fileTouches: fileTouches.filter((touch) => touch.turnId === turn.id).map(({ path, mode }) => ({ path, mode })),
+      permissions: permissions.filter((permission) => permission.turnId === turn.id).map(({ toolCallId, decision, decidedBy, rule }) => ({ toolCallId, decision, decidedBy, rule })),
+    };
+  });
+
+  return { session, turns };
+}
