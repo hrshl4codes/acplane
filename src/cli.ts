@@ -3,12 +3,16 @@ import { homedir } from "node:os";
 import { join } from "node:path";
 import { loadConfig } from "./config.js";
 import { parseIndexArgs, runIndex } from "./index-cmd.js";
+import { createPermissionInterceptor } from "./policy/interceptor.js";
+import { loadRuleset } from "./policy/load.js";
+import { redactSecrets } from "./policy/redact.js";
 import { JsonlRecorder } from "./recorder.js";
 import { startPump } from "./pump.js";
 
 export interface CliArgs {
   harness?: string;
   config?: string;
+  policy?: string;
 }
 
 function optionValue(argv: string[], index: number): string {
@@ -30,9 +34,12 @@ export function parseArgs(argv: string[]): CliArgs {
     } else if (argument === "--config") {
       result.config = optionValue(argv, index);
       index += 1;
+    } else if (argument === "--policy") {
+      result.policy = optionValue(argv, index);
+      index += 1;
     } else {
       throw new Error(
-        `acplane: unknown argument "${argument}" (usage: acplane [--harness <name>] [--config <path>])`,
+        `acplane: unknown argument "${argument}" (usage: acplane [--harness <name>] [--config <path>] [--policy <path>])`,
       );
     }
   }
@@ -52,10 +59,13 @@ export async function runProxy(options: RunProxyOptions): Promise<number> {
   const harness = config.harnesses[harnessName];
   if (!harness) throw new Error(`acplane: harness "${harnessName}" not found in config`);
 
+  const ruleset = loadRuleset(options.policy, config.policy);
+  const interceptor = createPermissionInterceptor(ruleset);
+
   const sessionsDirectory = options.sessionsDir ?? join(homedir(), ".acplane", "sessions");
   const timestamp = new Date().toISOString().replace(/[:.]/g, "-");
   const sessionId = `${timestamp}-${harnessName}-${randomBytes(2).toString("hex")}`;
-  const recorder = new JsonlRecorder(join(sessionsDirectory, `${sessionId}.jsonl`));
+  const recorder = new JsonlRecorder(join(sessionsDirectory, `${sessionId}.jsonl`), redactSecrets);
 
   const { exited } = startPump({
     command: harness.command,
@@ -63,6 +73,7 @@ export async function runProxy(options: RunProxyOptions): Promise<number> {
     env: harness.env,
     input: options.input ?? process.stdin,
     output: options.output ?? process.stdout,
+    interceptHarnessRequest: interceptor,
     taps: {
       onClientMessage: (_message, raw) => recorder.record("client->harness", raw),
       onHarnessMessage: (_message, raw) => recorder.record("harness->client", raw),

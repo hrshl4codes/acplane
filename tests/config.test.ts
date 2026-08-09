@@ -28,6 +28,19 @@ test("parses a valid config", () => {
   expect(config.defaultHarness).toBe("claude");
   expect(config.harnesses["claude"]!.command).toBe("npx");
   expect(config.harnesses["codex"]!.args).toEqual(["acp"]);
+  expect(config.policy).toBeUndefined();
+});
+
+test("preserves a configured policy path", () => {
+  const config = parseConfig(`
+defaultHarness: h
+policy: ./team-policy.yaml
+harnesses:
+  h:
+    command: agent
+`);
+
+  expect(config.policy).toBe("./team-policy.yaml");
 });
 
 test("args defaults to an empty array", () => {

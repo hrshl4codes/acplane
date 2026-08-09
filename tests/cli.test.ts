@@ -22,15 +22,19 @@ test("parseArgs extracts harness and config selections", () => {
 });
 
 test("parseArgs rejects unknown flags and missing values", () => {
-  expect(() => parseArgs(["--bogus"])).toThrow(/bogus/);
+  expect(() => parseArgs(["--bogus"])).toThrow(/--policy <path>/);
   expect(() => parseArgs(["--harness"])).toThrow(/requires a value/);
   expect(() => parseArgs(["--config"])).toThrow(/requires a value/);
+  expect(() => parseArgs(["--policy"])).toThrow(/requires a value/);
+  expect(() => parseArgs(["--policy", "--config", "/x/acplane.yaml"])).toThrow(/requires a value/);
 });
 
 test("runProxy spawns the configured harness and records the session", async () => {
   const directory = mkdtempSync(join(tmpdir(), "acplane-cli-"));
   temporaryDirectories.push(directory);
   const fakeHarness = join(import.meta.dirname, "fixtures", "fake-harness.mjs");
+  const policyPath = join(directory, "policy.yaml");
+  writeFileSync(policyPath, "default: escalate\nrules: []\n");
   const configPath = join(directory, "acplane.yaml");
   writeFileSync(
     configPath,
@@ -42,6 +46,7 @@ test("runProxy spawns the configured harness and records the session", async () 
   output.on("data", () => {});
   const completed = runProxy({
     config: configPath,
+    policy: policyPath,
     sessionsDir: join(directory, "sessions"),
     input,
     output,

@@ -12,6 +12,7 @@ export interface HarnessConfig {
 export interface AcplaneConfig {
   defaultHarness: string;
   harnesses: Record<string, HarnessConfig>;
+  policy?: string;
 }
 
 function isRecord(value: unknown): value is Record<string, unknown> {
@@ -62,7 +63,9 @@ export function parseConfig(yamlText: string): AcplaneConfig {
     throw new Error(`config: defaultHarness "${defaultHarness}" is not defined in harnesses`);
   }
 
-  return { defaultHarness, harnesses };
+  const config: AcplaneConfig = { defaultHarness, harnesses };
+  if (typeof document["policy"] === "string") config.policy = document["policy"];
+  return config;
 }
 
 export function loadConfig(explicitPath?: string): AcplaneConfig {
