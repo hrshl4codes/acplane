@@ -72,3 +72,64 @@ test("fileLineage retains unknown modes without counting them", () => {
   ]);
   db.close();
 });
+
+test("fileLineage uses binary ordering for tied Unicode paths, sessions, and modes", () => {
+  const db = openDb(":memory:");
+  const composedSessionId = "sess-\u00e9";
+  const decomposedSessionId = "sess-e\u0301";
+  const composedPath = "src/caf\u00e9.ts";
+  const decomposedPath = "src/cafe\u0301.ts";
+  const composedMode = "mode-\u00e9";
+  const decomposedMode = "mode-e\u0301";
+  const insertSession = db.prepare("INSERT INTO session (id, harness) VALUES (?, ?)");
+  const insertTouch = db.prepare(
+    "INSERT INTO file_touch (session_id, path, mode) VALUES (?, ?, ?)",
+  );
+
+  insertSession.run(composedSessionId, "composed");
+  insertSession.run(decomposedSessionId, "decomposed");
+  for (const path of [composedPath, decomposedPath]) {
+    for (const sessionId of [composedSessionId, decomposedSessionId]) {
+      insertTouch.run(sessionId, path, composedMode);
+      insertTouch.run(sessionId, path, decomposedMode);
+    }
+  }
+
+  expect(fileLineage(db)).toEqual([
+    {
+      path: decomposedPath,
+      readCount: 0,
+      writeCount: 0,
+      sessions: [
+        {
+          sessionId: decomposedSessionId,
+          harness: "decomposed",
+          modes: [decomposedMode, composedMode],
+        },
+        {
+          sessionId: composedSessionId,
+          harness: "composed",
+          modes: [decomposedMode, composedMode],
+        },
+      ],
+    },
+    {
+      path: composedPath,
+      readCount: 0,
+      writeCount: 0,
+      sessions: [
+        {
+          sessionId: decomposedSessionId,
+          harness: "decomposed",
+          modes: [decomposedMode, composedMode],
+        },
+        {
+          sessionId: composedSessionId,
+          harness: "composed",
+          modes: [decomposedMode, composedMode],
+        },
+      ],
+    },
+  ]);
+  db.close();
+});

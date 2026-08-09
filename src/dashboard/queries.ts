@@ -129,6 +129,10 @@ export interface FileLineageEntry {
   sessions: Array<{ sessionId: string; harness: string; modes: string[] }>;
 }
 
+function compareBinary(a: string, b: string): number {
+  return a < b ? -1 : a > b ? 1 : 0;
+}
+
 export function fileLineage(db: Db): FileLineageEntry[] {
   const rows = db
     .prepare(
@@ -172,16 +176,16 @@ export function fileLineage(db: Db): FileLineageEntry[] {
     .map(({ entry, sessions }) => ({
       ...entry,
       sessions: [...sessions.values()]
-        .sort((a, b) => a.sessionId.localeCompare(b.sessionId))
+        .sort((a, b) => compareBinary(a.sessionId, b.sessionId))
         .map(({ sessionId, harness, modes }) => ({
           sessionId,
           harness,
-          modes: [...modes].sort((a, b) => a.localeCompare(b)),
+          modes: [...modes].sort(compareBinary),
         })),
     }))
     .sort(
       (a, b) =>
         b.readCount + b.writeCount - (a.readCount + a.writeCount) ||
-        a.path.localeCompare(b.path),
+        compareBinary(a.path, b.path),
     );
 }
