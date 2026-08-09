@@ -189,3 +189,12 @@ export function fileLineage(db: Db): FileLineageEntry[] {
         compareBinary(a.path, b.path),
     );
 }
+
+export interface SessionComparison {
+  a: SessionDetail | null;
+  b: SessionDetail | null;
+}
+
+export function compareSessions(db: Db, aId: string, bId: string): SessionComparison {
+  return { a: sessionDetail(db, aId), b: sessionDetail(db, bId) };
+}
