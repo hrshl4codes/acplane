@@ -97,6 +97,8 @@ export function sessionDetail(db: Db, id: string): SessionDetail | null {
 
   const turns: TimelineTurn[] = turnRows.map((turn) => {
     const turnUsage = usage.filter((entry) => entry.turnId === turn.id);
+    const hasTokensIn = turnUsage.some((entry) => entry.tokensIn != null);
+    const hasTokensOut = turnUsage.some((entry) => entry.tokensOut != null);
     const hasCost = turnUsage.some((entry) => entry.costUsd != null);
     const reportedCount = turnUsage.filter((entry) => entry.source === "reported").length;
     const estimatedCount = turnUsage.filter((entry) => entry.source === "estimated").length;
@@ -107,8 +109,8 @@ export function sessionDetail(db: Db, id: string): SessionDetail | null {
       stopReason: turn.stopReason,
       startedAt: turn.startedAt,
       endedAt: turn.endedAt,
-      tokensIn: turnUsage.length ? turnUsage.reduce((sum, entry) => sum + (entry.tokensIn ?? 0), 0) : null,
-      tokensOut: turnUsage.length ? turnUsage.reduce((sum, entry) => sum + (entry.tokensOut ?? 0), 0) : null,
+      tokensIn: hasTokensIn ? turnUsage.reduce((sum, entry) => sum + (entry.tokensIn ?? 0), 0) : null,
+      tokensOut: hasTokensOut ? turnUsage.reduce((sum, entry) => sum + (entry.tokensOut ?? 0), 0) : null,
       costUsd: hasCost ? turnUsage.reduce((sum, entry) => sum + (entry.costUsd ?? 0), 0) : null,
       usageSource: turnUsage.length ? usageSourceLabel(reportedCount, estimatedCount) : null,
       toolCalls: toolCalls.filter((call) => call.turnId === turn.id).map(({ toolCallId, kind, title, status }) => ({ toolCallId, kind, title, status })),
