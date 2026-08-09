@@ -120,19 +120,59 @@ Use `--sessions <directory>` to select another recordings directory,
 
 ## What a recording looks like
 
-Each line is one message, tagged with a direction and a timestamp, with the
-original wire text preserved verbatim:
+Each line is one message, tagged with a direction and a timestamp. The `raw`
+field contains the wire text after secret redaction:
 
 ```json
 {"ts":"2026-08-08T11:41:24.942Z","direction":"client->harness","raw":"{\"jsonrpc\":\"2.0\",\"id\":1,\"method\":\"initialize\"}"}
 ```
 
+## Policy and permissions
+
+When a harness sends an ACP `session/request_permission` request, `acplane`
+evaluates its policy and can answer on the editor's behalf:
+
+- `deny` rejects the request without interrupting the editor.
+- `allow` approves the request without interrupting the editor.
+- `escalate` forwards the request to the editor for a human decision.
+
+Rules use first-match-wins evaluation over the tool-call `kind`, file `path`
+globs, and `command` globs. If no policy file is found, the built-in rules deny
+changes to secrets, git internals, and CI workflows. They escalate commands that
+pipe a network download into a shell, as well as requests that match no rule.
+
+Copy `acplane.policy.example.yaml` to `./acplane.policy.yaml` to customize the
+defaults, or pass `--policy <path>`. A `policy` path in `acplane.yaml` also works.
+Each permission response is recorded, including whether policy or a human made
+the decision and which policy rule matched. Indexing the recording writes these
+details to the `permission_event` table.
+
+If evaluating a permission request throws, `acplane` forwards the request to the
+editor instead of choosing a decision. An invalid policy file prevents startup.
+
+## Secret redaction
+
+Session recordings are redacted at rest. Tokens matching high-confidence
+Anthropic, OpenAI, GitHub, AWS access key ID, and bearer credential formats are
+replaced with `[REDACTED]` before a log line is written. Redaction does not
+change the bytes forwarded to the harness or editor.
+
+## Launch profiles
+
+Policy can act only on permission requests sent by the harness. A harness in a
+fully automatic mode does not ask permission, so there is nothing to intercept.
+Configure the harness adapter through its `args` in `acplane.yaml` so it asks
+permission for the actions you want policy to handle.
+
+Those launch flags are adapter-specific and still need confirmation against the
+real adapter and version in use. The quickstart entries above show how to start
+the adapters; they do not claim a particular permission profile.
+
 ## Project status
 
-The recording and normalization foundations work and are tested end to end.
-Building on top of them: file-level lineage across harnesses, a uniform policy
-layer that enforces the same rules regardless of which agent is running, and a
-local dashboard to explore it all.
+Recording, normalization, permission policy, and at-rest redaction work and are
+tested end to end. A local dashboard for exploring indexed sessions is not yet
+included.
 
 ## Development
 
