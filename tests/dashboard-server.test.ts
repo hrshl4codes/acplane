@@ -1,6 +1,7 @@
 import type { Server } from "node:http";
 import type { AddressInfo } from "node:net";
 import { afterEach, expect, test } from "vitest";
+import { DASHBOARD_HTML } from "../src/dashboard/page.js";
 import { createUiServer } from "../src/dashboard/server.js";
 import { openDb, type Db } from "../src/db/schema.js";
 import { seedTwoSessions } from "./dashboard/seed.js";
@@ -118,9 +119,7 @@ test.each(["/", "/index.html"])("GET %s serves the dashboard HTML", async (path)
 
   expect(response.status).toBe(200);
   expect(response.headers.get("content-type")).toBe("text/html; charset=utf-8");
-  expect(await response.text()).toBe(
-    '<!doctype html><title>acplane</title><div id="app"></div>',
-  );
+  expect(await response.text()).toBe(DASHBOARD_HTML);
 });
 
 test("unknown routes return a JSON 404", async () => {
