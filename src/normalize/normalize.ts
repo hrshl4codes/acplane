@@ -188,11 +188,18 @@ export function extractToolCalls(
     if (Array.isArray(update.content)) {
       for (const content of update.content) {
         if (content?.type === "diff") {
-          accumulator.diffs.push({
+          const diff = {
             path: content.path,
             oldText: content.oldText,
             newText: content.newText,
-          });
+          };
+          const alreadyRecorded = accumulator.diffs.some(
+            (existing) =>
+              existing.path === diff.path &&
+              existing.oldText === diff.oldText &&
+              existing.newText === diff.newText,
+          );
+          if (!alreadyRecorded) accumulator.diffs.push(diff);
         }
       }
     }
@@ -340,7 +347,8 @@ export function extractUsage(events: RecordedEvent[], turns: TurnSpan[]): UsageR
         Boolean(message["result"])
       );
     });
-    const usage = (response?.msg as Record<string, any> | undefined)?.["result"]?._meta?.usage;
+    const result = (response?.msg as Record<string, any> | undefined)?.["result"];
+    const usage = result?.usage ?? result?._meta?.usage;
     const tokensIn = usage?.inputTokens ?? usage?.input_tokens;
     const tokensOut = usage?.outputTokens ?? usage?.output_tokens;
     if (usage && (typeof tokensIn === "number" || typeof tokensOut === "number")) {

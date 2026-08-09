@@ -42,6 +42,37 @@ test("derives read and write file touches while preserving edit diffs", () => {
   });
 });
 
+test("deduplicates repeated diff snapshots from tool call updates", () => {
+  const events = eventsWithTools();
+  events.splice(3, 0, {
+    ts: "t2.1",
+    direction: "harness->client",
+    msg: {
+      jsonrpc: "2.0",
+      method: "session/update",
+      params: {
+        sessionId: "s",
+        update: {
+          sessionUpdate: "tool_call_update",
+          toolCallId: "tc-edit",
+          content: [
+            {
+              type: "diff",
+              path: "src/app.ts",
+              oldText: "const a = 1;",
+              newText: "const a = 2;",
+            },
+          ],
+        },
+      },
+    },
+  });
+
+  const normalized = normalizeSession("s-1", "claude", events);
+
+  expect(normalized.fileTouches.filter((touch) => touch.toolCallId === "tc-edit")).toHaveLength(1);
+});
+
 test("classifies an edit with empty old text as a create", () => {
   const events = eventsWithTools();
   const message = events[2]!.msg as { params: { update: { content: Array<{ oldText: string }> } } };

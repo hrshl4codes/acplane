@@ -21,6 +21,21 @@ test("uses reported usage when the harness provides it", () => {
   ]);
 });
 
+test("uses top-level ACP response usage reported by real adapters", () => {
+  const normalized = normalizeSession(
+    "s-1",
+    "codex",
+    turnWith({
+      stopReason: "end_turn",
+      usage: { inputTokens: 751, outputTokens: 22, totalTokens: 24069 },
+    }),
+  );
+
+  expect(normalized.usage).toEqual([
+    { turnSeq: 1, tokensIn: 751, tokensOut: 22, costUsd: null, source: "reported" },
+  ]);
+});
+
 test("flags fallback token counts as estimated", () => {
   const normalized = normalizeSession(
     "s-1",
