@@ -121,3 +121,67 @@ export function sessionDetail(db: Db, id: string): SessionDetail | null {
 
   return { session, turns };
 }
+
+export interface FileLineageEntry {
+  path: string;
+  readCount: number;
+  writeCount: number;
+  sessions: Array<{ sessionId: string; harness: string; modes: string[] }>;
+}
+
+export function fileLineage(db: Db): FileLineageEntry[] {
+  const rows = db
+    .prepare(
+      `SELECT f.path AS path, f.mode AS mode, f.session_id AS sessionId, s.harness AS harness
+       FROM file_touch f
+       JOIN session s ON s.id = f.session_id`,
+    )
+    .all() as Array<{ path: string; mode: string; sessionId: string; harness: string }>;
+  const byPath = new Map<
+    string,
+    {
+      entry: FileLineageEntry;
+      sessions: Map<string, { sessionId: string; harness: string; modes: Set<string> }>;
+    }
+  >();
+
+  for (const row of rows) {
+    let lineage = byPath.get(row.path);
+    if (!lineage) {
+      lineage = {
+        entry: { path: row.path, readCount: 0, writeCount: 0, sessions: [] },
+        sessions: new Map(),
+      };
+      byPath.set(row.path, lineage);
+    }
+
+    if (row.mode === "read") lineage.entry.readCount += 1;
+    if (row.mode === "write" || row.mode === "create" || row.mode === "delete") {
+      lineage.entry.writeCount += 1;
+    }
+
+    let session = lineage.sessions.get(row.sessionId);
+    if (!session) {
+      session = { sessionId: row.sessionId, harness: row.harness, modes: new Set() };
+      lineage.sessions.set(row.sessionId, session);
+    }
+    session.modes.add(row.mode);
+  }
+
+  return [...byPath.values()]
+    .map(({ entry, sessions }) => ({
+      ...entry,
+      sessions: [...sessions.values()]
+        .sort((a, b) => a.sessionId.localeCompare(b.sessionId))
+        .map(({ sessionId, harness, modes }) => ({
+          sessionId,
+          harness,
+          modes: [...modes].sort((a, b) => a.localeCompare(b)),
+        })),
+    }))
+    .sort(
+      (a, b) =>
+        b.readCount + b.writeCount - (a.readCount + a.writeCount) ||
+        a.path.localeCompare(b.path),
+    );
+}
