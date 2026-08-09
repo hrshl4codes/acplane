@@ -21,6 +21,22 @@ test.each([
   expect(redactSecrets(token)).toBe(token);
 });
 
+test.each([
+  ["GitHub fine-grained", "github_pat_ABCDEFabcdef0123456789_token_suffix"],
+  ["OpenAI base64url/project", "sk-proj-ABCDEFabcdef0123456789_token_suffix"],
+  ["case-insensitive Bearer token68", "bEaReR ABCdef0123456789~token+/suffix=="],
+])("replaces a complete modern %s credential standalone", (_name, credential) => {
+  expect(redactSecrets(credential)).toBe("[REDACTED]");
+});
+
+test.each([
+  ["GitHub fine-grained", "github_pat_ABCDEFabcdef0123456789_token_suffix"],
+  ["OpenAI base64url/project", "sk-proj-ABCDEFabcdef0123456789_token_suffix"],
+  ["case-insensitive Bearer token68", "bEaReR ABCdef0123456789~token+/suffix=="],
+])("replaces a complete modern %s credential in JSON-like text", (_name, credential) => {
+  expect(redactSecrets(`{\"credential\":\"${credential}\"}`)).toBe('{"credential":"[REDACTED]"}');
+});
+
 test("leaves ordinary text untouched", () => {
   const line = '{"method":"session/update","params":{"text":"read src/app.ts"}}';
 
