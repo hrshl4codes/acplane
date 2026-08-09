@@ -20,6 +20,20 @@ const originalCwd = process.cwd();
 const originalHome = process.env["HOME"];
 const temporaryDirectories: string[] = [];
 
+function waitForOutput(output: PassThrough, fragment: string): Promise<void> {
+  let received = "";
+  return new Promise((resolve) => {
+    const onData = (chunk: Buffer) => {
+      received += chunk.toString();
+      if (received.includes(fragment)) {
+        output.off("data", onData);
+        resolve();
+      }
+    };
+    output.on("data", onData);
+  });
+}
+
 afterEach(() => {
   process.chdir(originalCwd);
   if (originalHome === undefined) delete process.env["HOME"];
@@ -50,10 +64,12 @@ test("default policy denies a .env edit and the decision is queryable after inde
   const sessionsDir = join(directory, "sessions");
 
   const exited = runProxy({ config: configPath, sessionsDir, input, output });
+  const permissionHandled = waitForOutput(output, "permission outcome");
   input.write('{"jsonrpc":"2.0","id":1,"method":"initialize","params":{}}\n');
   input.write(
     '{"jsonrpc":"2.0","id":2,"method":"session/prompt","params":{"sessionId":"perm-session","prompt":[{"type":"text","text":"edit env"}]}}\n',
   );
+  await permissionHandled;
   input.end('{"jsonrpc":"2.0","id":3,"method":"shutdown"}\n');
   const exitCode = await exited;
   output.destroy();

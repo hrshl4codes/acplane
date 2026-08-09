@@ -43,7 +43,7 @@ test("runProxy enforces a configured policy and redacts the annotated recording"
   const configPath = join(directory, "acplane.yaml");
   writeFileSync(
     configPath,
-    `defaultHarness: perm\npolicy: ${policyPath}\nharnesses:\n  perm:\n    command: ${process.execPath}\n    args: ["${harness}"]\n`,
+    `defaultHarness: perm\npolicy: policy.yaml\nharnesses:\n  perm:\n    command: ${process.execPath}\n    args: ["${harness}"]\n`,
   );
 
   const input = new PassThrough();

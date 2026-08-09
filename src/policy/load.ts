@@ -13,21 +13,23 @@ function readRuleset(path: string): PolicyRuleset {
   return parseRuleset(readFileSync(path, "utf8"));
 }
 
-export function loadRuleset(explicitPath?: string, configPath?: string): PolicyRuleset {
-  if (explicitPath) {
-    try {
-      return readRuleset(explicitPath);
-    } catch (error) {
-      if (isMissingFile(error)) throw new Error(`policy: file not found: ${explicitPath}`);
-      throw error;
-    }
+function readRequiredRuleset(path: string): PolicyRuleset {
+  try {
+    return readRuleset(path);
+  } catch (error) {
+    if (isMissingFile(error)) throw new Error(`policy: file not found: ${path}`);
+    throw error;
   }
+}
+
+export function loadRuleset(explicitPath?: string, configPath?: string): PolicyRuleset {
+  if (explicitPath) return readRequiredRuleset(explicitPath);
+  if (configPath) return readRequiredRuleset(configPath);
 
   const candidates = [
-    configPath,
     "./acplane.policy.yaml",
     join(homedir(), ".acplane", "policy.yaml"),
-  ].filter((path): path is string => typeof path === "string");
+  ];
 
   for (const candidate of candidates) {
     try {

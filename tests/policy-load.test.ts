@@ -56,11 +56,12 @@ test("loads the configured policy before cwd and home policies", () => {
   expect(loadRuleset(undefined, configPath).default).toBe("allow");
 });
 
-test("a missing configured policy falls through to the cwd policy", () => {
+test("a missing configured policy fails instead of falling through to a cwd allow policy", () => {
   const { directory } = isolateDefaultLocations();
-  writePolicy(join(directory, "acplane.policy.yaml"), "deny");
+  writePolicy(join(directory, "acplane.policy.yaml"), "allow");
+  const missingPath = join(directory, "missing.yaml");
 
-  expect(loadRuleset(undefined, join(directory, "missing.yaml")).default).toBe("deny");
+  expect(() => loadRuleset(undefined, missingPath)).toThrow(`policy: file not found: ${missingPath}`);
 });
 
 test("does not fall through when a configured policy has a non-missing filesystem error", () => {
