@@ -20,6 +20,8 @@ test("records a rich session through the proxy and indexes it into SQLite", asyn
   temporaryDirectories.push(directory);
 
   const richHarness = join(import.meta.dirname, "fixtures", "rich-harness.mjs");
+  const policyPath = join(directory, "policy.yaml");
+  writeFileSync(policyPath, "default: escalate\nrules: []\n");
   const configPath = join(directory, "acplane.yaml");
   writeFileSync(
     configPath,
@@ -31,7 +33,7 @@ test("records a rich session through the proxy and indexes it into SQLite", asyn
   output.on("data", () => {});
   const sessionsDir = join(directory, "sessions");
 
-  const exited = runProxy({ config: configPath, sessionsDir, input, output });
+  const exited = runProxy({ config: configPath, policy: policyPath, sessionsDir, input, output });
   input.write('{"jsonrpc":"2.0","id":1,"method":"initialize","params":{}}\n');
   input.write('{"jsonrpc":"2.0","id":2,"method":"session/new","params":{"cwd":"/tmp"}}\n');
   input.write(

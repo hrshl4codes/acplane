@@ -1,0 +1,32 @@
+# acplane policy: first matching rule wins; unmatched requests fall to `default`.
+# kind values follow ACP tool-call kinds (read, edit, delete, execute, ...).
+default: escalate
+
+rules:
+  - name: protect-secrets
+    match:
+      kind: [edit, delete, move]
+      path: ["**/.env*", "**/*.pem", "**/*.key", "**/id_rsa*"]
+    decision: deny
+    reason: Agents may not modify secrets or private keys
+
+  - name: protect-git-internals
+    match:
+      kind: [edit, delete, move]
+      path: ["**/.git", "**/.git/**"]
+    decision: deny
+    reason: Agents may not modify git internals or hooks
+
+  - name: protect-ci
+    match:
+      kind: [edit, delete, move]
+      path: ["**/.github/workflows/**"]
+    decision: deny
+    reason: Agents may not modify CI workflows
+
+  - name: quarantine-pipe-to-shell
+    match:
+      kind: [execute]
+      command: ["*curl*|*sh*", "*curl*|*bash*", "*wget*|*sh*", "*wget*|*bash*"]
+    decision: escalate
+    reason: Piping a network download into a shell needs human review

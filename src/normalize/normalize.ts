@@ -46,12 +46,22 @@ export interface UsageRow {
   source: "reported" | "estimated";
 }
 
+export interface PermissionRow {
+  turnSeq: number | null;
+  toolCallId: string | null;
+  requested: string;
+  decision: string | null;
+  decidedBy: string | null;
+  rule: string | null;
+}
+
 export interface NormalizedSession {
   session: SessionRow;
   turns: TurnRow[];
   toolCalls: ToolCallRow[];
   fileTouches: FileTouchRow[];
   usage: UsageRow[];
+  permissions: PermissionRow[];
 }
 
 export interface TurnSpan extends TurnRow {
@@ -370,6 +380,93 @@ export function extractUsage(events: RecordedEvent[], turns: TurnSpan[]): UsageR
   });
 }
 
+function isRecord(value: unknown): value is Record<string, any> {
+  return value !== null && typeof value === "object" && !Array.isArray(value);
+}
+
+export function extractPermissions(
+  events: RecordedEvent[],
+  turns: TurnSpan[],
+): PermissionRow[] {
+  const permissions: PermissionRow[] = [];
+
+  events.forEach((event, requestIndex) => {
+    if (!isRecord(event.msg)) return;
+    const message = event.msg;
+    if (
+      event.direction !== "harness->client" ||
+      message["method"] !== "session/request_permission" ||
+      message["id"] === undefined
+    ) {
+      return;
+    }
+
+    const params = message["params"] ?? {};
+    const paramsRecord = isRecord(params) ? params : null;
+    const toolCall = isRecord(paramsRecord?.["toolCall"])
+      ? paramsRecord["toolCall"]
+      : null;
+    const toolCallId =
+      typeof toolCall?.["toolCallId"] === "string" ? toolCall["toolCallId"] : null;
+    const options = Array.isArray(paramsRecord?.["options"])
+      ? paramsRecord["options"]
+      : [];
+
+    const response = events.slice(requestIndex + 1).find((candidate) => {
+      if (candidate.direction !== "client->harness" || !isRecord(candidate.msg)) {
+        return false;
+      }
+      return (
+        candidate.msg["id"] === message["id"] &&
+        Object.prototype.hasOwnProperty.call(candidate.msg, "result")
+      );
+    });
+    const responseMessage = response && isRecord(response.msg) ? response.msg : null;
+    const result = isRecord(responseMessage?.["result"])
+      ? responseMessage["result"]
+      : null;
+    const outcome = isRecord(result?.["outcome"]) ? result["outcome"] : null;
+
+    let decision: string | null = null;
+    if (outcome?.["outcome"] === "cancelled") {
+      decision = "cancelled";
+    } else if (
+      outcome?.["outcome"] === "selected" &&
+      typeof outcome["optionId"] === "string"
+    ) {
+      const chosen = options.find(
+        (option) => isRecord(option) && option["optionId"] === outcome["optionId"],
+      );
+      const kind = isRecord(chosen) ? chosen["kind"] : null;
+      if (typeof kind === "string" && kind.startsWith("allow_")) {
+        decision = "allow";
+      } else if (typeof kind === "string" && kind.startsWith("reject_")) {
+        decision = "deny";
+      }
+    }
+
+    const metadata = isRecord(result?.["_meta"]) ? result["_meta"] : null;
+    const acplane = isRecord(metadata?.["acplane"]) ? metadata["acplane"] : null;
+    const decidedBy = response
+      ? acplane?.["decidedBy"] === "policy"
+        ? "policy"
+        : "human"
+      : null;
+    const rule = typeof acplane?.["rule"] === "string" ? acplane["rule"] : null;
+
+    permissions.push({
+      turnSeq: turnSeqForIndex(turns, requestIndex),
+      toolCallId,
+      requested: JSON.stringify(params),
+      decision,
+      decidedBy,
+      rule,
+    });
+  });
+
+  return permissions;
+}
+
 export function normalizeSession(
   id: string,
   harness: string,
@@ -380,6 +477,7 @@ export function normalizeSession(
   const turns = spans.map(toTurnRow);
   const { toolCalls, fileTouches } = extractToolCalls(events, spans);
   const usage = extractUsage(events, spans);
+  const permissions = extractPermissions(events, spans);
 
-  return { session, turns, toolCalls, fileTouches, usage };
+  return { session, turns, toolCalls, fileTouches, usage, permissions };
 }

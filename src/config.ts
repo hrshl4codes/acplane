@@ -1,6 +1,6 @@
 import { existsSync, readFileSync } from "node:fs";
 import { homedir } from "node:os";
-import { join } from "node:path";
+import { dirname, isAbsolute, join, resolve } from "node:path";
 import { parse } from "yaml";
 
 export interface HarnessConfig {
@@ -12,6 +12,7 @@ export interface HarnessConfig {
 export interface AcplaneConfig {
   defaultHarness: string;
   harnesses: Record<string, HarnessConfig>;
+  policy?: string;
 }
 
 function isRecord(value: unknown): value is Record<string, unknown> {
@@ -62,7 +63,22 @@ export function parseConfig(yamlText: string): AcplaneConfig {
     throw new Error(`config: defaultHarness "${defaultHarness}" is not defined in harnesses`);
   }
 
-  return { defaultHarness, harnesses };
+  const config: AcplaneConfig = { defaultHarness, harnesses };
+  if ("policy" in document) {
+    const policy = document["policy"];
+    if (typeof policy !== "string" || policy.length === 0) {
+      throw new Error("config: policy must be a non-empty string");
+    }
+    config.policy = policy;
+  }
+  return config;
+}
+
+function resolvePolicyPath(config: AcplaneConfig, configPath: string): AcplaneConfig {
+  if (config.policy && !isAbsolute(config.policy)) {
+    config.policy = resolve(dirname(configPath), config.policy);
+  }
+  return config;
 }
 
 export function loadConfig(explicitPath?: string): AcplaneConfig {
@@ -71,7 +87,9 @@ export function loadConfig(explicitPath?: string): AcplaneConfig {
     : ["./acplane.yaml", join(homedir(), ".acplane", "config.yaml")];
 
   for (const candidate of candidates) {
-    if (existsSync(candidate)) return parseConfig(readFileSync(candidate, "utf8"));
+    if (existsSync(candidate)) {
+      return resolvePolicyPath(parseConfig(readFileSync(candidate, "utf8")), candidate);
+    }
   }
 
   throw new Error(`config: no config file found (looked at: ${candidates.join(", ")})`);

@@ -30,5 +30,20 @@ export function writeNormalized(db: Db, normalized: NormalizedSession): void {
 
     const insertUsage = db.prepare("INSERT INTO usage_sample (session_id, turn_id, tokens_in, tokens_out, cost_usd, source) VALUES (?, ?, ?, ?, ?, ?)");
     for (const usage of normalized.usage) insertUsage.run(normalized.session.id, resolve(usage.turnSeq), usage.tokensIn, usage.tokensOut, usage.costUsd, usage.source);
+
+    const insertPermission = db.prepare(`INSERT INTO permission_event
+      (session_id, turn_id, tool_call_id, requested, decision, decided_by, rule)
+      VALUES (?, ?, ?, ?, ?, ?, ?)`);
+    for (const permission of normalized.permissions) {
+      insertPermission.run(
+        normalized.session.id,
+        resolve(permission.turnSeq),
+        permission.toolCallId,
+        permission.requested,
+        permission.decision,
+        permission.decidedBy,
+        permission.rule,
+      );
+    }
   })();
 }
