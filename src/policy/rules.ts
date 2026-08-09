@@ -87,7 +87,8 @@ export function parseRuleset(yamlText: string): PolicyRuleset {
   return { rules, default: defaultDecision };
 }
 
-function ruleMatches(match: PolicyMatch, subject: PermissionSubject): boolean {
+function ruleMatches(rule: PolicyRule, subject: PermissionSubject): boolean {
+  const { match } = rule;
   const hasKind = Boolean(match.kind?.length);
   const hasPath = Boolean(match.path?.length);
   const hasCommand = Boolean(match.command?.length);
@@ -96,7 +97,9 @@ function ruleMatches(match: PolicyMatch, subject: PermissionSubject): boolean {
   if (hasKind && !match.kind!.includes(subject.kind)) return false;
   if (hasPath) {
     if (subject.paths.length === 0) return false;
-    if (!subject.paths.some((path) => matchesAnyGlob(path, match.path!, "path"))) return false;
+    const pathMatches = (path: string) => matchesAnyGlob(path.replaceAll("\\", "/"), match.path!, "path");
+    const matchesPaths = rule.decision === "allow" ? subject.paths.every(pathMatches) : subject.paths.some(pathMatches);
+    if (!matchesPaths) return false;
   }
   if (hasCommand) {
     if (!subject.command) return false;
@@ -110,7 +113,7 @@ export function evaluatePolicy(
   subject: PermissionSubject,
 ): { decision: PolicyDecision; rule: string | null } {
   for (const rule of ruleset.rules) {
-    if (ruleMatches(rule.match, subject)) return { decision: rule.decision, rule: rule.name };
+    if (ruleMatches(rule, subject)) return { decision: rule.decision, rule: rule.name };
   }
   return { decision: ruleset.default, rule: null };
 }
@@ -119,19 +122,19 @@ export const DEFAULT_RULESET: PolicyRuleset = {
   rules: [
     {
       name: "protect-secrets",
-      match: { kind: ["edit", "delete"], path: ["**/.env*", "**/*.pem", "**/*.key", "**/id_rsa*"] },
+      match: { kind: ["edit", "delete", "move"], path: ["**/.env*", "**/*.pem", "**/*.key", "**/id_rsa*"] },
       decision: "deny",
       reason: "Agents may not modify secrets or private keys",
     },
     {
       name: "protect-git-internals",
-      match: { kind: ["edit", "delete"], path: [".git/**", "**/.git/hooks/**"] },
+      match: { kind: ["edit", "delete", "move"], path: ["**/.git", "**/.git/**"] },
       decision: "deny",
       reason: "Agents may not modify git internals or hooks",
     },
     {
       name: "protect-ci",
-      match: { kind: ["edit", "delete"], path: [".github/workflows/**"] },
+      match: { kind: ["edit", "delete", "move"], path: ["**/.github/workflows/**"] },
       decision: "deny",
       reason: "Agents may not modify CI workflows",
     },

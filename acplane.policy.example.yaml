@@ -5,22 +5,22 @@ default: escalate
 rules:
   - name: protect-secrets
     match:
-      kind: [edit, delete]
+      kind: [edit, delete, move]
       path: ["**/.env*", "**/*.pem", "**/*.key", "**/id_rsa*"]
     decision: deny
     reason: Agents may not modify secrets or private keys
 
   - name: protect-git-internals
     match:
-      kind: [edit, delete]
-      path: [".git/**", "**/.git/hooks/**"]
+      kind: [edit, delete, move]
+      path: ["**/.git", "**/.git/**"]
     decision: deny
     reason: Agents may not modify git internals or hooks
 
   - name: protect-ci
     match:
-      kind: [edit, delete]
-      path: [".github/workflows/**"]
+      kind: [edit, delete, move]
+      path: ["**/.github/workflows/**"]
     decision: deny
     reason: Agents may not modify CI workflows
 

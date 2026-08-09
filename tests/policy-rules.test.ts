@@ -17,6 +17,37 @@ test("default ruleset denies editing Git internals", () => {
   expect(result.rule).toBe("protect-git-internals");
 });
 
+test.each([
+  ["the .git directory itself", ".git", "protect-git-internals"],
+  ["an absolute Git path", "/repo/.git/config", "protect-git-internals"],
+  ["a nested Git path", "vendor/tool/.git/config", "protect-git-internals"],
+  ["an absolute CI workflow path", "/repo/.github/workflows/ci.yml", "protect-ci"],
+])("default ruleset denies editing %s", (_description, path, rule) => {
+  const result = evaluatePolicy(DEFAULT_RULESET, { kind: "edit", paths: [path], command: null });
+  expect(result.decision).toBe("deny");
+  expect(result.rule).toBe(rule);
+});
+
+test("default ruleset normalizes Windows separators when matching paths", () => {
+  const result = evaluatePolicy(DEFAULT_RULESET, {
+    kind: "edit",
+    paths: ["C:\\repo\\.env"],
+    command: null,
+  });
+  expect(result.decision).toBe("deny");
+  expect(result.rule).toBe("protect-secrets");
+});
+
+test.each([
+  ["a secret", ".env", "protect-secrets"],
+  ["Git metadata", ".git/config", "protect-git-internals"],
+  ["a CI workflow", ".github/workflows/ci.yml", "protect-ci"],
+])("default ruleset denies moving %s", (_description, path, rule) => {
+  const result = evaluatePolicy(DEFAULT_RULESET, { kind: "move", paths: [path], command: null });
+  expect(result.decision).toBe("deny");
+  expect(result.rule).toBe(rule);
+});
+
 test("default ruleset denies editing CI workflows", () => {
   const result = evaluatePolicy(DEFAULT_RULESET, {
     kind: "edit",
@@ -55,6 +86,23 @@ rules:
     decision: deny
 `);
   expect(evaluatePolicy(ruleset, { kind: "edit", paths: ["src/app.ts"], command: null }).rule).toBe("allow-src-edits");
+});
+
+test("an allow path rule must cover every affected path", () => {
+  const ruleset = parseRuleset(`
+default: deny
+rules:
+  - name: allow-src-edits
+    match: { kind: [edit], path: ["src/**"] }
+    decision: allow
+`);
+  const result = evaluatePolicy(ruleset, {
+    kind: "edit",
+    paths: ["src/app.ts", ".env"],
+    command: null,
+  });
+  expect(result.decision).toBe("deny");
+  expect(result.rule).toBeNull();
 });
 
 test("parseRuleset rejects an invalid decision", () => {
