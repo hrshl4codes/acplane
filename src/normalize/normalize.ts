@@ -46,12 +46,22 @@ export interface UsageRow {
   source: "reported" | "estimated";
 }
 
+export interface PermissionRow {
+  turnSeq: number | null;
+  toolCallId: string | null;
+  requested: string;
+  decision: string | null;
+  decidedBy: string | null;
+  rule: string | null;
+}
+
 export interface NormalizedSession {
   session: SessionRow;
   turns: TurnRow[];
   toolCalls: ToolCallRow[];
   fileTouches: FileTouchRow[];
   usage: UsageRow[];
+  permissions: PermissionRow[];
 }
 
 export interface TurnSpan extends TurnRow {
@@ -381,5 +391,5 @@ export function normalizeSession(
   const { toolCalls, fileTouches } = extractToolCalls(events, spans);
   const usage = extractUsage(events, spans);
 
-  return { session, turns, toolCalls, fileTouches, usage };
+  return { session, turns, toolCalls, fileTouches, usage, permissions: [] };
 }

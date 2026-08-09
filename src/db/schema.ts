@@ -59,15 +59,24 @@ CREATE TABLE IF NOT EXISTS permission_event (
   tool_call_id TEXT,
   requested TEXT,
   decision TEXT,
-  decided_by TEXT
+  decided_by TEXT,
+  rule TEXT
 );
 CREATE INDEX IF NOT EXISTS idx_file_touch_path ON file_touch(path);
 CREATE INDEX IF NOT EXISTS idx_tool_call_session ON tool_call(session_id);
 `;
 
+function ensureColumn(db: Db, table: string, column: string, type: string): void {
+  const columns = db.prepare(`PRAGMA table_info(${table})`).all() as Array<{ name: string }>;
+  if (!columns.some((entry) => entry.name === column)) {
+    db.exec(`ALTER TABLE ${table} ADD COLUMN ${column} ${type}`);
+  }
+}
+
 export function openDb(path: string): Db {
   const db = new Database(path);
   db.pragma("journal_mode = WAL");
   db.exec(SCHEMA);
+  ensureColumn(db, "permission_event", "rule", "TEXT");
   return db;
 }
