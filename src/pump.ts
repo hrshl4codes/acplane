@@ -15,6 +15,7 @@ export interface PumpOptions {
   output: NodeJS.WritableStream;
   stderr?: NodeJS.WritableStream;
   taps?: PumpTaps;
+  interceptHarnessRequest?: (message: unknown) => object | null;
 }
 
 function safeTap(tap: LineHandler | undefined, message: unknown | null, raw: string): void {
@@ -39,6 +40,23 @@ export function startPump(options: PumpOptions): { child: ChildProcess; exited: 
   });
   const harnessToClient = createLineParser((message, raw) => {
     safeTap(options.taps?.onHarnessMessage, message, raw);
+
+    if (options.interceptHarnessRequest) {
+      let response: object | null = null;
+      try {
+        response = options.interceptHarnessRequest(message);
+      } catch (error) {
+        console.error(`acplane: interceptor error (forwarding request): ${String(error)}`);
+        response = null;
+      }
+      if (response) {
+        const responseRaw = JSON.stringify(response);
+        safeTap(options.taps?.onClientMessage, response, responseRaw);
+        child.stdin!.write(`${responseRaw}\n`);
+        return;
+      }
+    }
+
     options.output.write(`${raw}\n`);
   });
 
