@@ -23,11 +23,11 @@ export function permissionSubject(params: Record<string, any>): PermissionSubjec
 
 export function selectOption(options: unknown, decision: "allow" | "deny"): string | null {
   if (!Array.isArray(options)) return null;
-  const family = decision === "allow" ? "allow" : "reject";
+  const oneShotKind = decision === "allow" ? "allow_once" : "reject_once";
   for (const option of options) {
     const kind = String((option as Record<string, any>)?.kind ?? "");
     const optionId = (option as Record<string, any>)?.optionId;
-    if (kind.startsWith(`${family}_`) && typeof optionId === "string") return optionId;
+    if (kind === oneShotKind && typeof optionId === "string") return optionId;
   }
   return null;
 }

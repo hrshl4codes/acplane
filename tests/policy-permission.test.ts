@@ -60,6 +60,32 @@ test("selectOption ignores malformed lookalikes and selects the first valid fami
   ], "deny")).toBe("first-reject");
 });
 
+test("selectOption selects the first exact one-shot option over persistent and unknown options", () => {
+  expect(selectOption([
+    { optionId: "always-allow", kind: "allow_always" },
+    { optionId: "forever-allow", kind: "allow_forever" },
+    { optionId: "first-allow", kind: "allow_once" },
+    { optionId: "later-allow", kind: "allow_once" },
+  ], "allow")).toBe("first-allow");
+  expect(selectOption([
+    { optionId: "always-reject", kind: "reject_always" },
+    { optionId: "forever-reject", kind: "reject_forever" },
+    { optionId: "first-reject", kind: "reject_once" },
+    { optionId: "later-reject", kind: "reject_once" },
+  ], "deny")).toBe("first-reject");
+});
+
+test("selectOption returns null when only persistent or unknown options are available", () => {
+  expect(selectOption([
+    { optionId: "always-allow", kind: "allow_always" },
+    { optionId: "forever-allow", kind: "allow_forever" },
+  ], "allow")).toBeNull();
+  expect(selectOption([
+    { optionId: "always-reject", kind: "reject_always" },
+    { optionId: "forever-reject", kind: "reject_forever" },
+  ], "deny")).toBeNull();
+});
+
 test("buildSelectedResponse annotates the decision", () => {
   expect(buildSelectedResponse(7, "reject", "protect-secrets")).toEqual({
     jsonrpc: "2.0",

@@ -67,6 +67,22 @@ test("cancels when a deny rule fires but no reject option is offered", () => {
   });
 });
 
+test("cancels when a deny rule has only persistent reject options", () => {
+  const request = permissionRequest("edit", ".env");
+  request.params.options = [
+    { optionId: "always-reject", name: "Always Reject", kind: "reject_always" },
+    { optionId: "forever-reject", name: "Forever Reject", kind: "reject_forever" },
+  ];
+  expect(intercept(request)).toEqual({
+    jsonrpc: "2.0",
+    id: "perm-1",
+    result: {
+      outcome: { outcome: "cancelled" },
+      _meta: { acplane: { decidedBy: "policy", rule: "protect-secrets" } },
+    },
+  });
+});
+
 const ALLOW_SOURCE_EDITS: PolicyRuleset = {
   default: "escalate",
   rules: [{ name: "allow-source-edits", match: { kind: ["edit"], path: ["src/**"] }, decision: "allow" }],
@@ -87,5 +103,14 @@ test("allows a matching request by selecting its allow option", () => {
 test("forwards an allow decision when no allow option is offered", () => {
   const request = permissionRequest("edit", "src/app.ts");
   request.params.options = [{ optionId: "reject", name: "Reject", kind: "reject_once" }];
+  expect(createPermissionInterceptor(ALLOW_SOURCE_EDITS)(request)).toBeNull();
+});
+
+test("forwards an allow decision when only persistent allow options are offered", () => {
+  const request = permissionRequest("edit", "src/app.ts");
+  request.params.options = [
+    { optionId: "always-allow", name: "Always Allow", kind: "allow_always" },
+    { optionId: "forever-allow", name: "Forever Allow", kind: "allow_forever" },
+  ];
   expect(createPermissionInterceptor(ALLOW_SOURCE_EDITS)(request)).toBeNull();
 });
