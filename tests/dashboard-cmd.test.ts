@@ -11,6 +11,7 @@ import { parseUiArgs, runUi } from "../src/dashboard-cmd.js";
 
 const fakes = vi.hoisted(() => ({
   readonlyDb: null as Db | null,
+  readonlyOpen: null as ((path: string) => Db) | null,
   server: null as Server | null,
 }));
 
@@ -29,7 +30,11 @@ vi.mock("../src/db/schema.js", async (importOriginal) => {
   return {
     ...actual,
     openReadonlyDb: vi.fn((path: string) =>
-      fakes.readonlyDb ? fakes.readonlyDb : actual.openReadonlyDb(path),
+      fakes.readonlyOpen
+        ? fakes.readonlyOpen(path)
+        : fakes.readonlyDb
+          ? fakes.readonlyDb
+          : actual.openReadonlyDb(path),
     ),
   };
 });
@@ -40,13 +45,16 @@ class FakeUiServer extends EventEmitter {
   readonly listenCalls: Array<{ port: number; host: string }> = [];
   closeCalls = 0;
   listenError: Error | null = null;
+  listenThrow: Error | null = null;
   shownPort = 44000;
 
   listen(port: number, host: string, callback: () => void): this {
     this.listenCalls.push({ port, host });
+    this.once("listening", callback);
+    if (this.listenThrow) throw this.listenThrow;
     queueMicrotask(() => {
       if (this.listenError) this.emit("error", this.listenError);
-      else callback();
+      else this.emit("listening");
     });
     return this;
   }
@@ -97,6 +105,7 @@ function captureShutdownSignals(): {
 
 afterEach(() => {
   fakes.readonlyDb = null;
+  fakes.readonlyOpen = null;
   fakes.server = null;
   vi.restoreAllMocks();
   vi.clearAllMocks();
@@ -143,7 +152,34 @@ test("runUi returns 1 without creating a missing index database", async () => {
   expect(existsSync(path)).toBe(false);
   expect(error).toHaveBeenCalledWith(expect.stringMatching(/no index found.*acplane index/i));
   expect(createUiServer).not.toHaveBeenCalled();
-  expect(openReadonlyDb).not.toHaveBeenCalled();
+  expect(openReadonlyDb).toHaveBeenCalledOnce();
+});
+
+test("runUi handles an index that disappears during the read-only open", async () => {
+  const path = join(temporaryDirectory("acplane-ui-disappears-"), "index.db");
+  openDb(path).close();
+  fakes.readonlyOpen = (openedPath) => {
+    rmSync(openedPath, { force: true });
+    throw new Error("database disappeared");
+  };
+  const error = vi.spyOn(console, "error").mockImplementation(() => {});
+
+  await expect(runUi({ db: path })).resolves.toBe(1);
+  expect(existsSync(path)).toBe(false);
+  expect(error).toHaveBeenCalledWith(expect.stringMatching(/no index found.*acplane index/i));
+  expect(createUiServer).not.toHaveBeenCalled();
+});
+
+test("runUi propagates an unrelated read-only open error", async () => {
+  const path = join(temporaryDirectory("acplane-ui-open-error-"), "index.db");
+  openDb(path).close();
+  fakes.readonlyOpen = () => {
+    throw new Error("permission denied");
+  };
+
+  await expect(runUi({ db: path })).rejects.toThrow("permission denied");
+  expect(existsSync(path)).toBe(true);
+  expect(createUiServer).not.toHaveBeenCalled();
 });
 
 test("openReadonlyDb reads an existing database and rejects writes", () => {
@@ -187,6 +223,8 @@ test("runUi uses defaults, reports the bound port, and resolves when the server 
   await expect(completed).resolves.toBe(0);
   expect(db.close).toHaveBeenCalledTimes(1);
   expect(signals.active.size).toBe(0);
+  expect(server.listenerCount("close")).toBe(0);
+  expect(server.listenerCount("error")).toBe(0);
 });
 
 test("overlapping shutdown signals cannot close the server or database twice", async () => {
@@ -212,6 +250,36 @@ test("overlapping shutdown signals cannot close the server or database twice", a
   await expect(completed).resolves.toBe(0);
   expect(db.close).toHaveBeenCalledTimes(1);
   expect(signals.active.size).toBe(0);
+  expect(server.listenerCount("close")).toBe(0);
+  expect(server.listenerCount("error")).toBe(0);
+});
+
+test("a post-listen server error rejects and cleans up every lifecycle resource", async () => {
+  const path = join(temporaryDirectory("acplane-ui-runtime-error-"), "index.db");
+  openDb(path).close();
+  const server = new FakeUiServer();
+  const db = { close: vi.fn() } as unknown as Db;
+  fakes.server = server as unknown as Server;
+  fakes.readonlyDb = db;
+  const signals = captureShutdownSignals();
+  vi.spyOn(console, "error").mockImplementation(() => {});
+
+  const completed = runUi({ db: path });
+  await vi.waitFor(() => expect(signals.callbacks.SIGINT).toBeTypeOf("function"));
+  let unhandled: unknown;
+  try {
+    server.emit("error", new Error("runtime failure"));
+  } catch (error) {
+    unhandled = error;
+  }
+
+  expect(unhandled).toBeUndefined();
+  await expect(completed).rejects.toThrow("runtime failure");
+  expect(server.closeCalls).toBe(1);
+  expect(db.close).toHaveBeenCalledTimes(1);
+  expect(signals.active.size).toBe(0);
+  expect(server.listenerCount("close")).toBe(0);
+  expect(server.listenerCount("error")).toBe(0);
 });
 
 test("runUi closes the database and removes listeners when listen fails", async () => {
@@ -227,6 +295,25 @@ test("runUi closes the database and removes listeners when listen fails", async 
   await expect(runUi({ db: path })).rejects.toThrow("bind failed");
   expect(db.close).toHaveBeenCalledTimes(1);
   expect(server.listenerCount("error")).toBe(0);
+  expect(server.listenerCount("listening")).toBe(0);
+  expect(server.listenerCount("close")).toBe(0);
+  expect(signals.active.size).toBe(0);
+});
+
+test("runUi removes the listening callback when listen throws synchronously", async () => {
+  const path = join(temporaryDirectory("acplane-ui-listen-throw-"), "index.db");
+  openDb(path).close();
+  const server = new FakeUiServer();
+  server.listenThrow = new Error("invalid listen options");
+  const db = { close: vi.fn() } as unknown as Db;
+  fakes.server = server as unknown as Server;
+  fakes.readonlyDb = db;
+  const signals = captureShutdownSignals();
+
+  await expect(runUi({ db: path })).rejects.toThrow("invalid listen options");
+  expect(db.close).toHaveBeenCalledTimes(1);
+  expect(server.listenerCount("error")).toBe(0);
+  expect(server.listenerCount("listening")).toBe(0);
   expect(server.listenerCount("close")).toBe(0);
   expect(signals.active.size).toBe(0);
 });

@@ -1,4 +1,4 @@
-import { existsSync } from "node:fs";
+import { statSync } from "node:fs";
 import type { Server } from "node:http";
 import type { AddressInfo } from "node:net";
 import { homedir } from "node:os";
@@ -18,6 +18,16 @@ function optionValue(argv: string[], index: number): string {
     throw new Error(`acplane ui: ${argv[index]} requires a value`);
   }
   return value;
+}
+
+function isMissingPath(path: string): boolean {
+  try {
+    statSync(path);
+    return false;
+  } catch (error) {
+    const code = (error as NodeJS.ErrnoException).code;
+    return code === "ENOENT" || code === "ENOTDIR";
+  }
 }
 
 export function parseUiArgs(argv: string[]): UiArgs {
@@ -49,12 +59,16 @@ export function parseUiArgs(argv: string[]): UiArgs {
 
 async function listen(server: Server, port: number, host: string): Promise<void> {
   await new Promise<void>((resolve, reject) => {
-    const onError = (error: Error) => {
+    const removeListeners = () => {
       server.off("error", onError);
+      server.off("listening", onListening);
+    };
+    const onError = (error: Error) => {
+      removeListeners();
       reject(error);
     };
     const onListening = () => {
-      server.off("error", onError);
+      removeListeners();
       resolve();
     };
 
@@ -62,7 +76,7 @@ async function listen(server: Server, port: number, host: string): Promise<void>
     try {
       server.listen(port, host, onListening);
     } catch (error) {
-      server.off("error", onError);
+      removeListeners();
       reject(error);
     }
   });
@@ -70,12 +84,17 @@ async function listen(server: Server, port: number, host: string): Promise<void>
 
 export async function runUi(args: UiArgs): Promise<number> {
   const dbPath = args.db ?? join(homedir(), ".acplane", "index.db");
-  if (!existsSync(dbPath)) {
-    console.error(`acplane: no index found at ${dbPath}. Run "acplane index" first.`);
-    return 1;
+  let db;
+  try {
+    db = openReadonlyDb(dbPath);
+  } catch (error) {
+    if (isMissingPath(dbPath)) {
+      console.error(`acplane: no index found at ${dbPath}. Run "acplane index" first.`);
+      return 1;
+    }
+    throw error;
   }
 
-  const db = openReadonlyDb(dbPath);
   let server: Server;
   try {
     server = createUiServer({ db });
@@ -93,23 +112,37 @@ export async function runUi(args: UiArgs): Promise<number> {
     let finished = false;
     let stopping = false;
 
-    const removeSignalListeners = () => {
+    const removeListeners = () => {
       process.off("SIGINT", stop);
       process.off("SIGTERM", stop);
+      server.off("close", onClose);
+      server.off("error", onError);
     };
-    const finish = (error?: Error) => {
+    const finish = (error?: unknown) => {
       if (finished) return;
       finished = true;
-      removeSignalListeners();
+      removeListeners();
+
+      if (error && !stopping) {
+        stopping = true;
+        try {
+          server.close();
+        } catch {
+          // Preserve the operational error that ended the dashboard lifecycle.
+        }
+      }
+
+      let failure = error;
       try {
         db.close();
       } catch (closeError) {
-        reject(closeError);
-        return;
+        failure ??= closeError;
       }
-      if (error) reject(error);
+      if (failure) reject(failure);
       else resolve(0);
     };
+    const onClose = () => finish();
+    const onError = (error: Error) => finish(error);
     const stop = () => {
       if (stopping || finished) return;
       stopping = true;
@@ -122,7 +155,8 @@ export async function runUi(args: UiArgs): Promise<number> {
       }
     };
 
-    server.once("close", finish);
+    server.once("close", onClose);
+    server.once("error", onError);
     process.once("SIGINT", stop);
     process.once("SIGTERM", stop);
   });
