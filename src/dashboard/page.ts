@@ -19,6 +19,7 @@ export const DASHBOARD_HTML = String.raw`<!doctype html>
   header a:hover { color:var(--fg); }
   header a.active { color:var(--fg); font-weight:600; }
   :focus-visible { outline:2px solid var(--accent); outline-offset:3px; }
+  [data-route-heading]:focus { outline:none; }
   main { width:100%; min-width:0; max-width:1100px; margin:0 auto; padding:20px; }
   .table-wrap { width:100%; overflow-x:auto; overscroll-behavior-inline:contain; }
   table { width:100%; min-width:760px; border-collapse:collapse; }

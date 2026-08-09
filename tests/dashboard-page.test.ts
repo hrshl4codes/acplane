@@ -200,6 +200,14 @@ test("page contains local table scrolling and a stacked mobile comparison", () =
   expect(DASHBOARD_HTML).toMatch(/:focus-visible/);
 });
 
+test("programmatic route-heading focus is visually quiet without removing interactive rings", () => {
+  expect(DASHBOARD_HTML).toContain('app.querySelector("[data-route-heading]")?.focus()');
+  expect(DASHBOARD_HTML).toMatch(/:focus-visible\s*\{[^}]*outline:2px solid var\(--accent\)/);
+  expect(DASHBOARD_HTML).toMatch(
+    /\[data-route-heading\]:focus\s*\{[^}]*outline:\s*none/,
+  );
+});
+
 test("timeline preserves missing token directions and explicit zeroes", () => {
   const harness = createPageHarness();
   const render = (value: ReturnType<typeof turn>) =>
