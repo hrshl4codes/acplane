@@ -27,8 +27,8 @@ export class JsonlRecorder {
     let stored: string;
     try {
       stored = this.#redact ? this.#redact(raw) : raw;
-    } catch (error) {
-      this.#drop(error, "redaction failed");
+    } catch {
+      this.#drop("acplane: recorder redaction failed, session log incomplete");
       return;
     }
 
@@ -36,15 +36,15 @@ export class JsonlRecorder {
     try {
       appendFileSync(this.#filePath, `${line}\n`);
     } catch (error) {
-      this.#drop(error, "write failed");
+      this.#drop(`acplane: recorder write failed, session log incomplete: ${String(error)}`);
     }
   }
 
-  #drop(error: unknown, reason: string): void {
+  #drop(message: string): void {
     this.#dropped += 1;
     if (!this.#warned) {
       this.#warned = true;
-      console.error(`acplane: recorder ${reason}, session log incomplete: ${String(error)}`);
+      console.error(message);
     }
   }
 }

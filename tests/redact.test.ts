@@ -1,18 +1,24 @@
 import { expect, test } from "vitest";
 import { redactSecrets } from "../src/policy/redact.js";
 
-test("redacts anthropic, openai, github, aws, and bearer tokens", () => {
-  const line =
-    "key=sk-ant-api03-abcDEF012345678901234 ghp_ABCDEFabcdef0123456789ABCDEF0123 AKIAIOSFODNN7EXAMPLE sk-proj-ABCDEFabcdef0123456789 Bearer ABCdef0123456789_abcdef.0123456789";
+test.each([
+  ["anthropic", "sk-ant-api03-abc_DEF012345678901234"],
+  ["openai", "sk-proj-ABCDEFabcdef0123456789"],
+  ["github", "ghp_ABCDEFabcdef0123456789ABCDEF0123"],
+  ["aws", "AKIAIOSFODNN7EXAMPLE"],
+  ["bearer", "Bearer ABCdef0123456789_abcdef.0123456789"],
+])("redacts a %s token exactly", (_name, token) => {
+  expect(redactSecrets(token)).toBe("[REDACTED]");
+});
 
-  const out = redactSecrets(line);
-
-  expect(out).not.toMatch(/sk-ant-/);
-  expect(out).not.toMatch(/ghp_/);
-  expect(out).not.toMatch(/AKIA/);
-  expect(out).not.toMatch(/sk-proj-/);
-  expect(out).not.toMatch(/Bearer\s+[A-Za-z0-9._-]{20,}/);
-  expect(out).toContain("[REDACTED]");
+test.each([
+  ["anthropic token body shorter than 16 characters", "sk-ant-abc_DEF01234567"],
+  ["openai sk- token body shorter than 20 characters", "sk-ABCDEFabcdef0123456"],
+  ["github token body shorter than 20 characters", "ghp_ABCDEFabcdef0123456"],
+  ["aws access-key ID body shorter than 16 characters", "AKIAIOSFODNN7EXAMPL"],
+  ["bearer credential body shorter than 20 characters", "Bearer ABCdef0123456789abc"],
+])("does not redact a near-miss %s", (_name, token) => {
+  expect(redactSecrets(token)).toBe(token);
 });
 
 test("leaves ordinary text untouched", () => {

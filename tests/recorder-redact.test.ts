@@ -28,18 +28,23 @@ test("stores redacted raw when a redactor is provided", () => {
   expect(stored.raw).toContain("[REDACTED]");
 });
 
-test("drops the observation when the redactor throws without writing the original payload", () => {
+test("drops redactor failures without writing or printing the original payload", () => {
   const directory = mkdtempSync(join(tmpdir(), "acplane-redact-"));
   temporaryDirectories.push(directory);
   const file = join(directory, "s.jsonl");
+  const secret = "sk-ant-api03-abcDEF012345678901234";
   const recorder = new JsonlRecorder(file, () => {
-    throw new Error("redactor failure");
+    throw new Error(`redactor failure: ${secret}`);
   });
   const error = vi.spyOn(console, "error").mockImplementation(() => {});
 
-  expect(() => recorder.record("harness->client", '{"token":"sk-ant-api03-abcDEF012345678901234"}')).not.toThrow();
+  expect(() => {
+    recorder.record("harness->client", `{\"token\":\"${secret}\"}`);
+    recorder.record("harness->client", `{\"token\":\"${secret}\"}`);
+  }).not.toThrow();
 
-  expect(recorder.droppedCount).toBe(1);
+  expect(recorder.droppedCount).toBe(2);
   expect(existsSync(file)).toBe(false);
   expect(error).toHaveBeenCalledTimes(1);
+  expect(error.mock.calls.flat().join("\n")).not.toContain(secret);
 });
