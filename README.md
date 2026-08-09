@@ -21,11 +21,13 @@ session ends, questions like "which files did this agent read before it edited
 that one" or "what did it ask permission to do" are hard to answer and easy to
 lose.
 
-Recording at the protocol boundary changes that. Every prompt, response, tool
-call, and permission request reaches `acplane`, so it captures the session from
-outside the agent's reach. It adds nothing to the model's context and consumes
-no tokens. Ordinary messages and escalated permission requests are forwarded
-byte for byte; allow and deny responses are generated locally from policy.
+Recording at the protocol boundary changes that. Every ACP message passes
+through `acplane`. The recorder captures only events the editor and harness emit
+over ACP. A tool call or permission request is recorded only when the harness
+reports it on that connection. The record remains outside the agent's local
+state and adds nothing to the model's context. Ordinary messages and escalated
+permission requests are forwarded byte for byte; allow and deny responses are
+generated locally from policy.
 
 Observation is designed to fail open. If the recorder cannot write, it reports
 the problem and keeps forwarding traffic. A broken flight recorder never grounds
@@ -165,6 +167,32 @@ Anthropic, OpenAI, GitHub, AWS access key ID, and bearer credential formats are
 replaced with `[REDACTED]` before a log line is written. Redaction does not
 change the bytes forwarded to the harness or editor.
 
+## Dashboard
+
+After recording sessions, index them and start the local dashboard:
+
+```sh
+node bin/acplane.mjs index      # build or refresh ~/.acplane/index.db
+node bin/acplane.mjs ui         # listen on http://127.0.0.1:4319
+```
+
+The dashboard has four views:
+
+- Sessions is the catalog of indexed sessions across harnesses. Each row has
+  turn, tool-call, file, token, cost, and denial totals.
+- Open a session to inspect its timeline, including tool calls, file touches,
+  permission decisions, and the matching rule for decisions made by policy.
+- File lineage answers which sessions read or wrote a file, across harnesses
+  and over time.
+- Compare puts two session timelines side by side.
+
+Both commands accept `--db <path>` for a different index. The `ui` command also
+accepts `--port <n>` and `--host <h>`; its default address is
+`127.0.0.1:4319`.
+
+For the protocol-layer comparison and manual walkthrough, see the
+[dashboard demo guide](docs/demo.md).
+
 ## Launch profiles
 
 Policy can act only on permission requests sent by the harness. A harness in a
@@ -178,9 +206,10 @@ the adapters; they do not claim a particular permission profile.
 
 ## Project status
 
-Recording, normalization, permission policy, and at-rest redaction work and are
-tested end to end. A local dashboard for exploring indexed sessions is not yet
-included.
+`acplane` records and normalizes sessions, applies permission policy and at-rest
+redaction, and serves the local dashboard. The ACP-shaped record-to-index path
+is tested end to end. Dashboard queries, server routes, page behavior, and CLI
+wiring have automated integration coverage.
 
 ## Development
 

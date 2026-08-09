@@ -2,6 +2,7 @@ import { randomBytes } from "node:crypto";
 import { homedir } from "node:os";
 import { join } from "node:path";
 import { loadConfig } from "./config.js";
+import { parseUiArgs, runUi } from "./dashboard-cmd.js";
 import { parseIndexArgs, runIndex } from "./index-cmd.js";
 import { createPermissionInterceptor } from "./policy/interceptor.js";
 import { loadRuleset } from "./policy/load.js";
@@ -85,5 +86,6 @@ export async function runProxy(options: RunProxyOptions): Promise<number> {
 
 export async function main(argv: string[]): Promise<number> {
   if (argv[0] === "index") return runIndex(parseIndexArgs(argv.slice(1)));
+  if (argv[0] === "ui") return runUi(parseUiArgs(argv.slice(1)));
   return runProxy(parseArgs(argv));
 }

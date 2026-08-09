@@ -62,8 +62,12 @@ CREATE TABLE IF NOT EXISTS permission_event (
   decided_by TEXT,
   rule TEXT
 );
+CREATE INDEX IF NOT EXISTS idx_turn_session ON turn(session_id);
 CREATE INDEX IF NOT EXISTS idx_file_touch_path ON file_touch(path);
 CREATE INDEX IF NOT EXISTS idx_tool_call_session ON tool_call(session_id);
+CREATE INDEX IF NOT EXISTS idx_file_touch_session ON file_touch(session_id);
+CREATE INDEX IF NOT EXISTS idx_usage_sample_session ON usage_sample(session_id);
+CREATE INDEX IF NOT EXISTS idx_permission_event_session ON permission_event(session_id);
 `;
 
 function ensureColumn(db: Db, table: string, column: string, type: string): void {
@@ -79,4 +83,8 @@ export function openDb(path: string): Db {
   db.exec(SCHEMA);
   ensureColumn(db, "permission_event", "rule", "TEXT");
   return db;
+}
+
+export function openReadonlyDb(path: string): Db {
+  return new Database(path, { readonly: true });
 }
