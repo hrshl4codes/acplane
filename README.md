@@ -22,6 +22,10 @@ interrupting traffic between the client and harness.
 - Node.js 20.19 or newer
 - An ACP-compatible client and harness
 
+The maintained Claude ACP adapter used below requires Node.js 22 or newer.
+This is an adapter requirement; acplane itself continues to support Node.js
+20.19 and newer.
+
 ## Quickstart
 
 Install dependencies and build the executable:
