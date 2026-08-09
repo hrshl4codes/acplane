@@ -5,11 +5,13 @@ export type Direction = "client->harness" | "harness->client";
 
 export class JsonlRecorder {
   readonly #filePath: string;
+  readonly #redact: ((raw: string) => string) | undefined;
   #warned = false;
   #dropped = 0;
 
-  constructor(filePath: string) {
+  constructor(filePath: string, redact?: (raw: string) => string) {
     this.#filePath = filePath;
+    this.#redact = redact;
     try {
       mkdirSync(dirname(filePath), { recursive: true });
     } catch {
@@ -22,15 +24,27 @@ export class JsonlRecorder {
   }
 
   record(direction: Direction, raw: string): void {
-    const line = JSON.stringify({ ts: new Date().toISOString(), direction, raw });
+    let stored: string;
+    try {
+      stored = this.#redact ? this.#redact(raw) : raw;
+    } catch (error) {
+      this.#drop(error, "redaction failed");
+      return;
+    }
+
+    const line = JSON.stringify({ ts: new Date().toISOString(), direction, raw: stored });
     try {
       appendFileSync(this.#filePath, `${line}\n`);
     } catch (error) {
-      this.#dropped += 1;
-      if (!this.#warned) {
-        this.#warned = true;
-        console.error(`acplane: recorder write failed, session log incomplete: ${String(error)}`);
-      }
+      this.#drop(error, "write failed");
+    }
+  }
+
+  #drop(error: unknown, reason: string): void {
+    this.#dropped += 1;
+    if (!this.#warned) {
+      this.#warned = true;
+      console.error(`acplane: recorder ${reason}, session log incomplete: ${String(error)}`);
     }
   }
 }
