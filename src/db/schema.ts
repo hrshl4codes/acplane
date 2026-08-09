@@ -80,3 +80,7 @@ export function openDb(path: string): Db {
   ensureColumn(db, "permission_event", "rule", "TEXT");
   return db;
 }
+
+export function openReadonlyDb(path: string): Db {
+  return new Database(path, { readonly: true });
+}
