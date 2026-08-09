@@ -165,6 +165,29 @@ Anthropic, OpenAI, GitHub, AWS access key ID, and bearer credential formats are
 replaced with `[REDACTED]` before a log line is written. Redaction does not
 change the bytes forwarded to the harness or editor.
 
+## Dashboard
+
+After recording sessions, index them and start the local dashboard:
+
+```sh
+node bin/acplane.mjs index      # build or refresh ~/.acplane/index.db
+node bin/acplane.mjs ui         # listen on http://127.0.0.1:4319
+```
+
+The dashboard has four views:
+
+- Sessions is the catalog of indexed sessions across harnesses. Each row has
+  turn, tool-call, file, token, cost, and denial totals.
+- Open a session to inspect its timeline, including tool calls, file touches,
+  permission decisions, and the matching rule for decisions made by policy.
+- File lineage answers which sessions read or wrote a file, across harnesses
+  and over time.
+- Compare puts two session timelines side by side.
+
+Both commands accept `--db <path>` for a different index. The `ui` command also
+accepts `--port <n>` and `--host <h>`; its default address is
+`127.0.0.1:4319`.
+
 ## Launch profiles
 
 Policy can act only on permission requests sent by the harness. A harness in a
@@ -178,9 +201,8 @@ the adapters; they do not claim a particular permission profile.
 
 ## Project status
 
-Recording, normalization, permission policy, and at-rest redaction work and are
-tested end to end. A local dashboard for exploring indexed sessions is not yet
-included.
+Recording, normalization, permission policy, at-rest redaction, and the local
+dashboard work and are tested end to end.
 
 ## Development
 
