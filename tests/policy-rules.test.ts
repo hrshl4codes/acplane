@@ -7,6 +7,26 @@ test("default ruleset denies editing a .env file", () => {
   expect(result.rule).toBe("protect-secrets");
 });
 
+test("default ruleset denies editing Git internals", () => {
+  const result = evaluatePolicy(DEFAULT_RULESET, {
+    kind: "edit",
+    paths: [".git/hooks/pre-commit"],
+    command: null,
+  });
+  expect(result.decision).toBe("deny");
+  expect(result.rule).toBe("protect-git-internals");
+});
+
+test("default ruleset denies editing CI workflows", () => {
+  const result = evaluatePolicy(DEFAULT_RULESET, {
+    kind: "edit",
+    paths: [".github/workflows/test.yml"],
+    command: null,
+  });
+  expect(result.decision).toBe("deny");
+  expect(result.rule).toBe("protect-ci");
+});
+
 test("default ruleset escalates piping a download into a shell", () => {
   const result = evaluatePolicy(DEFAULT_RULESET, {
     kind: "execute",
@@ -39,6 +59,10 @@ rules:
 
 test("parseRuleset rejects an invalid decision", () => {
   expect(() => parseRuleset(`default: escalate\nrules:\n  - name: x\n    match: { kind: [edit] }\n    decision: maybe\n`)).toThrow(/decision/);
+});
+
+test.each(["deny-everything", "[]"])("parseRuleset rejects a malformed present match: %s", (match) => {
+  expect(() => parseRuleset(`default: allow\nrules:\n  - name: deny-secret-edits\n    match: ${match}\n    decision: deny\n`)).toThrow(/match must be a mapping/);
 });
 
 test("a rule with no criteria never matches", () => {

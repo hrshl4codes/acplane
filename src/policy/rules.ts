@@ -66,7 +66,11 @@ export function parseRuleset(yamlText: string): PolicyRuleset {
     if (!isRecord(raw) || typeof raw["name"] !== "string") {
       throw new Error(`policy: rule #${index + 1} needs a name`);
     }
-    const match = isRecord(raw["match"]) ? raw["match"] : {};
+    const rawMatch = raw["match"];
+    if (rawMatch !== undefined && !isRecord(rawMatch)) {
+      throw new Error(`policy: rule "${raw["name"]}" match must be a mapping`);
+    }
+    const match = rawMatch ?? {};
     const rule: PolicyRule = {
       name: raw["name"],
       decision: parseDecision(raw["decision"], `rule "${raw["name"]}"`),
