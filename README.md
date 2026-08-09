@@ -4,9 +4,10 @@ A transparent proxy for coding agents that records what they actually do.
 
 `acplane` sits between an ACP-compatible editor and the coding agent behind it.
 You point your editor at `acplane` instead of at the harness directly. It
-launches the real harness, passes every message through untouched, and writes
-the full exchange to a JSONL flight log. The agent behaves exactly as it would
-without the proxy in the middle, but now every session leaves a record you own.
+launches the real harness, forwards ordinary ACP traffic unchanged, and writes
+the exchange to a JSONL flight log. Permission requests that policy allows or
+denies are answered locally and recorded. Requests that policy escalates are
+forwarded to the editor for a human decision.
 
 It speaks the [Agent Client Protocol (ACP)](https://agentclientprotocol.com/),
 so it works with any ACP client and any ACP harness without per-tool
@@ -20,11 +21,11 @@ session ends, questions like "which files did this agent read before it edited
 that one" or "what did it ask permission to do" are hard to answer and easy to
 lose.
 
-Recording at the protocol boundary changes that. Because every prompt, response,
-tool call, and permission request crosses the wire between editor and harness,
-`acplane` captures a complete and neutral account of the session from outside the
-agent's reach. It adds nothing to the model's context and consumes no tokens:
-messages are forwarded byte for byte.
+Recording at the protocol boundary changes that. Every prompt, response, tool
+call, and permission request reaches `acplane`, so it captures the session from
+outside the agent's reach. It adds nothing to the model's context and consumes
+no tokens. Ordinary messages and escalated permission requests are forwarded
+byte for byte; allow and deny responses are generated locally from policy.
 
 Observation is designed to fail open. If the recorder cannot write, it reports
 the problem and keeps forwarding traffic. A broken flight recorder never grounds
@@ -33,15 +34,16 @@ the plane.
 ## How it works
 
 ```
-  ACP client                    acplane                     harness
- (Zed, etc.)                                          (Claude Code, Codex)
-      |                            |                           |
-      |  ---- JSON-RPC (stdio) --> |  ---- forwarded as-is --> |
-      |                         [ record ]                     |
-      |  <-- forwarded as-is ----- |  <---- JSON-RPC (stdio) - |
-      |                            |                           |
-                                   v
-                     ~/.acplane/sessions/<id>.jsonl
+  ACP client                 acplane                  harness
+ (Zed, etc.)                                     (Claude Code, Codex)
+      |                         |                        |
+      | <---- ordinary ------> | <---- unchanged ----> |
+      |                         | <-- permission request |
+      | <---- escalate ------- |                        |
+      |                         +---- allow/deny response ---->
+      |                      [ record ]                   |
+                                v
+                  ~/.acplane/sessions/<id>.jsonl
 ```
 
 ## Requirements
@@ -142,13 +144,19 @@ changes to secrets, git internals, and CI workflows. They escalate commands that
 pipe a network download into a shell, as well as requests that match no rule.
 
 Copy `acplane.policy.example.yaml` to `./acplane.policy.yaml` to customize the
-defaults, or pass `--policy <path>`. A `policy` path in `acplane.yaml` also works.
+defaults, or pass `--policy <path>`. You can also set `policy` in `acplane.yaml`.
+The `--policy` flag overrides the config. Without that flag, a config-declared
+policy is authoritative: `acplane` does not fall back to the working-directory,
+home-directory, or built-in policy if that file cannot be loaded. Relative
+policy paths resolve beside the config file. A missing or invalid policy named
+by the config or `--policy` prevents startup.
+
 Each permission response is recorded, including whether policy or a human made
 the decision and which policy rule matched. Indexing the recording writes these
 details to the `permission_event` table.
 
 If evaluating a permission request throws, `acplane` forwards the request to the
-editor instead of choosing a decision. An invalid policy file prevents startup.
+editor instead of choosing a decision.
 
 ## Secret redaction
 
