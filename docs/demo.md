@@ -1,21 +1,24 @@
 # Where acplane sits
 
-Most tooling around coding agents observes a layer next to the session instead
-of the editor-to-agent stream itself.
+These tools observe different protocol boundaries, and their records can
+overlap. What each tool sees depends on the traffic or instrumentation available
+at that boundary.
 
 | Layer | Examples | What it sees |
 | --- | --- | --- |
-| Model API (above) | Vendor app gateways, LLM gateways | Identity, spend, and credentials. Agent actions inside the editor session are out of scope. |
-| Tool traffic (below) | MCP and A2A proxies | Agent-to-tool calls. The editor-agent stream does not pass through this layer. |
-| UI and workflow (beside) | Session managers | Panes and worktrees, without ACP events for an audit record |
-| Self-instrumented apps | Tracing platforms | Telemetry emitted by application code you instrumented |
-| **ACP session layer** | **acplane** | **Prompts, tool calls, file touches, permission decisions** |
+| Model API boundary | Model gateways | Model requests and responses. Stored payloads may include prompts and tool-call intent, but not necessarily the complete editor-agent exchange or confirmed local effects. |
+| MCP boundary | MCP clients, servers, and proxies | Agent-to-tool context and tool calls |
+| A2A boundary | A2A clients, servers, and proxies | Agent-to-agent tasks and messages |
+| UI and workflow | Session managers | Visibility depends on which protocols a session manager reads and what it records. |
+| Application instrumentation | Tracing platforms | Telemetry emitted by instrumented application code |
+| **ACP session boundary** | **acplane** | **ACP-emitted prompts, tool-call updates, file touches, and permission flows** |
 
-`acplane` reads ACP traffic between the editor and the harness. It records the
-session at that boundary, so it does not need a separate integration for each
-tool. The index combines sessions from configured ACP harnesses and connects
-each file touch to its source session. If a harness sends ACP permission
-requests, `acplane` evaluates them against the same policy.
+`acplane` reads the ACP connection between the editor and the harness. It can
+record only what the editor and harness emit over ACP. File lineage comes from
+reported file touches rather than independent filesystem observation. Within
+that boundary, the index combines sessions from configured ACP harnesses and
+connects each file touch to its source session. If a harness sends ACP
+permission requests, `acplane` evaluates them against the same policy.
 
 ## 90-second demo
 

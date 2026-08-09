@@ -21,11 +21,13 @@ session ends, questions like "which files did this agent read before it edited
 that one" or "what did it ask permission to do" are hard to answer and easy to
 lose.
 
-Recording at the protocol boundary changes that. Every prompt, response, tool
-call, and permission request reaches `acplane`, so it captures the session from
-outside the agent's reach. It adds nothing to the model's context and consumes
-no tokens. Ordinary messages and escalated permission requests are forwarded
-byte for byte; allow and deny responses are generated locally from policy.
+Recording at the protocol boundary changes that. Every ACP message passes
+through `acplane`. The recorder captures only events the editor and harness emit
+over ACP. A tool call or permission request is recorded only when the harness
+reports it on that connection. The record remains outside the agent's local
+state and adds nothing to the model's context. Ordinary messages and escalated
+permission requests are forwarded byte for byte; allow and deny responses are
+generated locally from policy.
 
 Observation is designed to fail open. If the recorder cannot write, it reports
 the problem and keeps forwarding traffic. A broken flight recorder never grounds
@@ -188,6 +190,9 @@ Both commands accept `--db <path>` for a different index. The `ui` command also
 accepts `--port <n>` and `--host <h>`; its default address is
 `127.0.0.1:4319`.
 
+For the protocol-layer comparison and manual walkthrough, see the
+[dashboard demo guide](docs/demo.md).
+
 ## Launch profiles
 
 Policy can act only on permission requests sent by the harness. A harness in a
@@ -201,8 +206,10 @@ the adapters; they do not claim a particular permission profile.
 
 ## Project status
 
-Recording, normalization, permission policy, at-rest redaction, and the local
-dashboard work and are tested end to end.
+`acplane` records and normalizes sessions, applies permission policy and at-rest
+redaction, and serves the local dashboard. The ACP-shaped record-to-index path
+is tested end to end. Dashboard queries, server routes, page behavior, and CLI
+wiring have automated integration coverage.
 
 ## Development
 
