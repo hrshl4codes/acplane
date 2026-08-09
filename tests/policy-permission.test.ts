@@ -45,9 +45,23 @@ test("selectOption picks the matching option family", () => {
   expect(selectOption([], "deny")).toBeNull();
 });
 
+test("selectOption ignores malformed lookalikes and selects the first valid family option", () => {
+  expect(selectOption([
+    { optionId: "bare-allow", kind: "allow" },
+    { optionId: "allowed", kind: "allowed_once" },
+    { optionId: "first-allow", kind: "allow_once" },
+    { optionId: "later-allow", kind: "allow_always" },
+  ], "allow")).toBe("first-allow");
+  expect(selectOption([
+    { optionId: "bare-reject", kind: "reject" },
+    { optionId: "rejected", kind: "rejected_once" },
+    { optionId: "first-reject", kind: "reject_once" },
+    { optionId: "later-reject", kind: "reject_always" },
+  ], "deny")).toBe("first-reject");
+});
+
 test("buildSelectedResponse annotates the decision", () => {
-  const response = buildSelectedResponse(7, "reject", "protect-secrets") as any;
-  expect(response).toMatchObject({
+  expect(buildSelectedResponse(7, "reject", "protect-secrets")).toEqual({
     jsonrpc: "2.0",
     id: 7,
     result: { outcome: { outcome: "selected", optionId: "reject" }, _meta: { acplane: { decidedBy: "policy", rule: "protect-secrets" } } },
@@ -55,7 +69,9 @@ test("buildSelectedResponse annotates the decision", () => {
 });
 
 test("buildCancelledResponse omits rule when none fired", () => {
-  const response = buildCancelledResponse(9, null) as any;
-  expect(response.result.outcome).toEqual({ outcome: "cancelled" });
-  expect(response.result._meta.acplane).toEqual({ decidedBy: "policy" });
+  expect(buildCancelledResponse(9, null)).toEqual({
+    jsonrpc: "2.0",
+    id: 9,
+    result: { outcome: { outcome: "cancelled" }, _meta: { acplane: { decidedBy: "policy" } } },
+  });
 });

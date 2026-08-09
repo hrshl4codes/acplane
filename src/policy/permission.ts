@@ -27,7 +27,7 @@ export function selectOption(options: unknown, decision: "allow" | "deny"): stri
   for (const option of options) {
     const kind = String((option as Record<string, any>)?.kind ?? "");
     const optionId = (option as Record<string, any>)?.optionId;
-    if (kind.startsWith(family) && typeof optionId === "string") return optionId;
+    if (kind.startsWith(`${family}_`) && typeof optionId === "string") return optionId;
   }
   return null;
 }
