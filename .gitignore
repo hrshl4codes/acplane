@@ -2,3 +2,7 @@
 node_modules/
 dist/
 *.jsonl
+
+# Committed regression fixtures are the one exception to ignoring session logs.
+!tests/fixtures/real/
+!tests/fixtures/real/*.jsonl

@@ -2,6 +2,7 @@ import { randomBytes } from "node:crypto";
 import { homedir } from "node:os";
 import { join } from "node:path";
 import { loadConfig } from "./config.js";
+import { parseIndexArgs, runIndex } from "./index-cmd.js";
 import { JsonlRecorder } from "./recorder.js";
 import { startPump } from "./pump.js";
 
@@ -69,4 +70,9 @@ export async function runProxy(options: RunProxyOptions): Promise<number> {
   });
 
   return exited;
+}
+
+export async function main(argv: string[]): Promise<number> {
+  if (argv[0] === "index") return runIndex(parseIndexArgs(argv.slice(1)));
+  return runProxy(parseArgs(argv));
 }

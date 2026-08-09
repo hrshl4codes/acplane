@@ -49,6 +49,10 @@ the plane.
 - Node.js 20.19 or newer
 - An ACP-compatible client and harness
 
+The maintained Claude ACP adapter used below requires Node.js 22 or newer.
+This is an adapter requirement; acplane itself continues to support Node.js
+20.19 and newer.
+
 ## Quickstart
 
 Install dependencies and build the executable:
@@ -66,8 +70,20 @@ harnesses:
   claude:
     command: npx
     args:
+      - "-y"
       - "@agentclientprotocol/claude-agent-acp"
+  codex:
+    command: npx
+    args:
+      - "-y"
+      - "@agentclientprotocol/codex-acp"
 ```
+
+Both entries launch ACP adapters that wrap the underlying agent CLI, since the
+agents do not speak ACP over stdio on their own. `acplane` itself is
+harness-agnostic: it proxies and records whatever ACP-compatible command a
+harness entry points at, so adding another agent is a matter of configuration,
+not code.
 
 Point your ACP client at `node /absolute/path/to/acplane/bin/acplane.mjs`. In
 Zed, add an agent server to `settings.json`:
@@ -93,6 +109,15 @@ launching:
 node bin/acplane.mjs --harness codex --config /path/to/acplane.yaml
 ```
 
+Normalize recorded sessions into the default local SQLite index:
+
+```sh
+node bin/acplane.mjs index
+```
+
+Use `--sessions <directory>` to select another recordings directory,
+`--db <path>` to select another database, or pass individual `.jsonl` files.
+
 ## What a recording looks like
 
 Each line is one message, tagged with a direction and a timestamp, with the
@@ -104,9 +129,8 @@ original wire text preserved verbatim:
 
 ## Project status
 
-This is the recording foundation, the first piece of a larger design. It works
-and is tested end to end. Building on top of it: normalizing raw logs into a
-queryable session store, file-level lineage across harnesses, a uniform policy
+The recording and normalization foundations work and are tested end to end.
+Building on top of them: file-level lineage across harnesses, a uniform policy
 layer that enforces the same rules regardless of which agent is running, and a
 local dashboard to explore it all.
 
@@ -118,8 +142,9 @@ npm run typecheck
 npm run build
 ```
 
-The suite includes a deterministic ACP-shaped harness and a full proxy
-recording flow, so the core behavior is verified without needing a live agent.
+The suite includes a deterministic ACP-shaped harness, a full proxy-to-SQLite
+flow, and sanitized regression fixtures captured from real Claude and Codex
+sessions.
 
 ## License
 
