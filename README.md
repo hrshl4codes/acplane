@@ -122,6 +122,18 @@ node bin/acplane.mjs index
 Use `--sessions <directory>` to select another recordings directory,
 `--db <path>` to select another database, or pass individual `.jsonl` files.
 
+### Terminal output
+
+CLI commands use branding on interactive terminals. `index` shows progress, and
+`ui` shows its banner before the dashboard address. When their human output is
+redirected, those commands retain their existing plain summary or startup
+lines. The proxy writes its human-readable startup status only to an
+interactive stderr stream; its stdout is reserved for ACP wire messages and is
+never decorated.
+
+Set `NO_COLOR` (including `NO_COLOR=`) to suppress ANSI styling. The terminal
+formatting uses raw ANSI sequences and adds no dependencies.
+
 ## What a recording looks like
 
 Each line is one message, tagged with a direction and a timestamp. The `raw`
