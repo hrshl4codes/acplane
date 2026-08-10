@@ -481,7 +481,9 @@ test("sessions view renders real summary aggregates before the detail table", as
   await harness.route("#/");
 
   const html = harness.app.innerHTML;
-  expect(html).toContain('<div class="stats" aria-label="Session summary">');
+  expect(html).toContain(
+    '<div class="stats" role="group" aria-label="Session summary">',
+  );
   expect(html).toContain(
     '<dt class="stat-label">Sessions</dt><dd class="stat-value">3</dd>',
   );

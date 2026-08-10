@@ -187,7 +187,7 @@ async function sessionsView(generation, signal) {
   const totalCost = sessions.reduce((n, s) => n + (s.costUsd || 0), 0);
   const anyCost = sessions.some((s) => s.costUsd != null);
   const denials = sessions.reduce((n, s) => n + (s.denialCount || 0), 0);
-  const stats = '<div class="stats" aria-label="Session summary">' +
+  const stats = '<div class="stats" role="group" aria-label="Session summary">' +
     '<dl class="stat"><dt class="stat-label">Sessions</dt><dd class="stat-value">' + esc(sessions.length) + "</dd></dl>" +
     '<dl class="stat"><dt class="stat-label">Cost</dt><dd class="stat-value">' + cost(anyCost ? totalCost : null) + "</dd></dl>" +
     '<dl class="stat' + (denials > 0 ? " stat-deny" : "") + '"><dt class="stat-label">Denials</dt><dd class="stat-value">' + esc(denials) + "</dd></dl></div>";
