@@ -115,7 +115,24 @@ export async function runUi(args: UiArgs): Promise<number> {
   const style = detectStyle(humanOutput);
   try {
     if (style.tty) {
-      await printBanner(humanOutput, style, `v${getVersion()}`);
+      let bannerWriteFailed = false;
+      let bannerWriteError: unknown;
+      const bannerOutput = {
+        isTTY: humanOutput.isTTY,
+        write: (chunk: string | Uint8Array) => {
+          try {
+            return humanOutput.write(chunk);
+          } catch (error) {
+            if (!bannerWriteFailed) {
+              bannerWriteFailed = true;
+              bannerWriteError = error;
+            }
+            throw error;
+          }
+        },
+      } as NodeJS.WritableStream & { isTTY?: boolean };
+      await printBanner(bannerOutput, style, `v${getVersion()}`);
+      if (bannerWriteFailed) throw bannerWriteError;
       humanOutput.write(
         `  ${bold("dashboard", style)} ${paint(url, ACCENT, style)}  ${style.color ? "\x1b[2m(Ctrl+C to stop)\x1b[22m" : "(Ctrl+C to stop)"}\n`,
       );

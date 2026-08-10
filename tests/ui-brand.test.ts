@@ -103,6 +103,41 @@ test("TTY ui reveals the version banner and styled dashboard-live line", async (
   }
 });
 
+test("first banner write failure preserves the error and closes server and database once", async () => {
+  vi.useFakeTimers();
+  directory = mkdtempSync(join(tmpdir(), "acplane-ui-brand-"));
+  const dbPath = join(directory, "index.db");
+  openDb(dbPath).close();
+  const db = { close: vi.fn() } as unknown as Db;
+  const server = new FakeUiServer();
+  const outputError = new Error("injected first banner write failure");
+  let writeCalls = 0;
+  const humanOutput = {
+    isTTY: true,
+    write: () => {
+      writeCalls += 1;
+      if (writeCalls === 1) throw outputError;
+      return true;
+    },
+  } as unknown as NodeJS.WritableStream & { isTTY: boolean };
+  fakes.db = db;
+  fakes.server = server as unknown as Server;
+
+  try {
+    const completed = runUi({ db: dbPath, humanOutput });
+    const rejection = expect(completed).rejects.toBe(outputError);
+    await vi.runAllTimersAsync();
+    server.emit("close");
+    await rejection;
+    expect(writeCalls).toBe(1);
+    expect(server.closeCalls).toBe(1);
+    expect(db.close).toHaveBeenCalledTimes(1);
+    expect(vi.getTimerCount()).toBe(0);
+  } finally {
+    vi.useRealTimers();
+  }
+});
+
 test("startup output failure preserves the error and closes server and database once", async () => {
   vi.useFakeTimers();
   directory = mkdtempSync(join(tmpdir(), "acplane-ui-brand-"));
