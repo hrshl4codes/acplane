@@ -1,6 +1,8 @@
 import { randomBytes } from "node:crypto";
 import { homedir } from "node:os";
 import { join } from "node:path";
+import { detectStyle } from "./brand/ansi.js";
+import { getVersion, renderHelp } from "./brand/banner.js";
 import { loadConfig } from "./config.js";
 import { parseUiArgs, runUi } from "./dashboard-cmd.js";
 import { parseIndexArgs, runIndex } from "./index-cmd.js";
@@ -85,6 +87,14 @@ export async function runProxy(options: RunProxyOptions): Promise<number> {
 }
 
 export async function main(argv: string[]): Promise<number> {
+  if (argv[0] === "--version" || argv[0] === "-v") {
+    process.stdout.write(`acplane ${getVersion()}\n`);
+    return 0;
+  }
+  if (argv[0] === "--help" || argv[0] === "-h") {
+    process.stdout.write(renderHelp(detectStyle(process.stdout)) + "\n");
+    return 0;
+  }
   if (argv[0] === "index") return runIndex(parseIndexArgs(argv.slice(1)));
   if (argv[0] === "ui") return runUi(parseUiArgs(argv.slice(1)));
   return runProxy(parseArgs(argv));
