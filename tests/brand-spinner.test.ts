@@ -4,7 +4,7 @@ import { createSpinner } from "../src/brand/spinner.js";
 const PLAIN = { tty: false, color: false, truecolor: false };
 const COLORED_TTY = { tty: true, color: true, truecolor: false };
 
-test("non-TTY creation and label updates write nothing before success", () => {
+test("repeated non-TTY terminal calls write exactly one legacy result line", () => {
   const writes: string[] = [];
   const stream = { isTTY: false, write: (chunk: string) => (writes.push(chunk), true) } as any;
 
@@ -14,6 +14,9 @@ test("non-TTY creation and label updates write nothing before success", () => {
   expect(writes).toEqual([]);
 
   spinner.succeed("acplane: indexed 2 sessions");
+  spinner.fail("acplane: should not print");
+  spinner.succeed("acplane: should also not print");
+
   expect(writes).toEqual(["acplane: indexed 2 sessions\n"]);
 });
 

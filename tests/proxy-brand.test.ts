@@ -3,9 +3,11 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { PassThrough } from "node:stream";
 import { afterEach, expect, test, vi } from "vitest";
+import { getVersion } from "../src/brand/banner.js";
 import { runProxy } from "../src/cli.js";
 
 const temporaryDirectories: string[] = [];
+const VERSION = getVersion();
 
 afterEach(() => {
   vi.unstubAllEnvs();
@@ -70,9 +72,7 @@ test("TTY proxy status identifies the version and harness without contaminating 
   input.write('{"jsonrpc":"2.0","id":2,"method":"shutdown"}\n');
 
   await expect(exited).resolves.toBe(0);
-  expect(writes.join("").replaceAll(/\x1b\[[0-9;]*m/g, "")).toBe(
-    "acplane v0.0.1 · proxying fake\n",
-  );
+  expect(writes.join("")).toBe(`\x1b[2macplane v${VERSION} · proxying fake\x1b[22m\n`);
   const wireText = wire.join("");
   expect(wireText).not.toContain("proxying");
   expect(wireText).not.toContain("acplane v");
@@ -109,7 +109,7 @@ test("proxy status is plain on a NO_COLOR TTY", async () => {
   });
   noColorProxy.input.end('{"jsonrpc":"2.0","id":1,"method":"shutdown"}\n');
   await expect(noColorExited).resolves.toBe(0);
-  expect(noColorOutput.writes.join("")).toBe("acplane v0.0.1 · proxying fake\n");
+  expect(noColorOutput.writes.join("")).toBe(`acplane v${VERSION} · proxying fake\n`);
   expect(noColorOutput.writes.join("")).not.toMatch(/\x1b\[/);
 });
 
