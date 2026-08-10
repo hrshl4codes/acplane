@@ -264,13 +264,24 @@ test("page preserves active navigation and usage provenance contracts", () => {
   expect(DASHBOARD_HTML).toContain('estMark(t.usageSource)');
 });
 
-test("page renders permission decisions and governing rules distinctly", () => {
-  expect(DASHBOARD_HTML).toContain(
-    'p.decision === "deny" ? " deny" : p.decision === "allow" ? " allow" : ""',
+test("permission rows use locked severity surfaces and readable metadata", () => {
+  const stylesheet = extractStylesheet();
+
+  expect(stylesheet).toMatch(
+    /\.perm\s*\{[^}]*border-left:3px solid var\(--warn\)[^}]*background:var\(--warn-soft\)/,
   );
-  expect(DASHBOARD_HTML).toContain('esc(p.rule)');
-  expect(DASHBOARD_HTML).toMatch(/\.deny\s*\{[^}]*var\(--deny\)/);
-  expect(DASHBOARD_HTML).toMatch(/\.allow\s*\{[^}]*var\(--ok\)/);
+  expect(stylesheet).toMatch(
+    /\.perm-deny\s*\{[^}]*border-left-color:var\(--deny\)[^}]*background:var\(--deny-soft\)/,
+  );
+  expect(stylesheet).toMatch(
+    /\.perm-allow\s*\{[^}]*border-left-color:var\(--ok\)[^}]*background:var\(--ok-soft\)/,
+  );
+  expect(stylesheet).toMatch(
+    /\.perm-warn\s*\{[^}]*border-left-color:var\(--warn\)[^}]*background:var\(--warn-soft\)/,
+  );
+  expect(stylesheet).toMatch(/\.perm-rule\s*\{[^}]*background:var\(--paper\)/);
+  expect(stylesheet).toMatch(/\.perm-meta\s*\{[^}]*color:var\(--muted\)/);
+  expect(stylesheet).toMatch(/\.perm-tool\s*\{[^}]*font-family:var\(--font-mono\)/);
 });
 
 test("page contains local table scrolling and a stacked mobile comparison", () => {
@@ -299,10 +310,10 @@ test("timeline preserves missing token directions and explicit zeroes", () => {
   expect(render(turn({ tokensIn: 0, tokensOut: 0 }))).toContain("0 in / 0 out");
 });
 
-test("only exact permission decisions receive allow or deny styling", () => {
+test("permission rows map exact allow and deny decisions with every other state warning", () => {
   const harness = createPageHarness();
   const permissions = [
-    { decision: "deny", rule: "protect", toolCallId: "d" },
+    { decision: "deny", decidedBy: "policy", rule: "protect", toolCallId: "d" },
     { decision: "allow", rule: "permit", toolCallId: "a" },
     { decision: null, rule: "review", toolCallId: "p" },
     { decision: "cancelled", rule: "review", toolCallId: "c" },
@@ -312,14 +323,44 @@ test("only exact permission decisions receive allow or deny styling", () => {
     `turnHtml(${JSON.stringify(turn({ permissions }))})`,
   );
 
-  expect(html).toContain('<span class="badge deny">deny</span>');
-  expect(html).toContain('<span class="badge allow">allow</span>');
-  expect(html).toContain('<span class="badge">pending</span>');
-  expect(html).toContain('<span class="badge">cancelled</span>');
-  expect(html).toContain('<span class="badge">escalate</span>');
-  expect(html).not.toContain('class="badge allow">pending');
-  expect(html).not.toContain('class="badge allow">cancelled');
-  expect(html).not.toContain('class="badge allow">escalate');
+  expect(html).toContain(
+    '<div class="perm perm-deny"><span class="badge perm-decision">deny</span> <code class="perm-tool">d</code><span class="perm-meta"> · policy</span> <span class="badge perm-rule">protect</span></div>',
+  );
+  expect(html).toContain(
+    '<div class="perm perm-allow"><span class="badge perm-decision">allow</span> <code class="perm-tool">a</code>',
+  );
+  expect(html).toContain(
+    '<div class="perm perm-warn"><span class="badge perm-decision">pending</span> <code class="perm-tool">p</code>',
+  );
+  expect(html).toContain(
+    '<div class="perm perm-warn"><span class="badge perm-decision">cancelled</span> <code class="perm-tool">c</code>',
+  );
+  expect(html).toContain(
+    '<div class="perm perm-warn"><span class="badge perm-decision">escalate</span> <code class="perm-tool">e</code>',
+  );
+  expect(html.match(/class="perm perm-warn"/g)).toHaveLength(3);
+});
+
+test("permission rows preserve the pending fallback and escape every displayed field", () => {
+  const harness = createPageHarness();
+  const html = harness.evaluate<string>(
+    `turnHtml(${JSON.stringify(turn({
+      permissions: [
+        {
+          decision: null,
+          decidedBy: "human&operator",
+          rule: '\"><script>',
+          toolCallId: "<tool>",
+        },
+      ],
+    }))})`,
+  );
+
+  expect(html).toContain('<span class="badge perm-decision">pending</span>');
+  expect(html).toContain('<code class="perm-tool">&lt;tool&gt;</code>');
+  expect(html).toContain('<span class="perm-meta"> · human&amp;operator</span>');
+  expect(html).toContain('<span class="badge perm-rule">&quot;&gt;&lt;script&gt;</span>');
+  expect(html).not.toContain("<script>");
 });
 
 test("compare disables empty controls and shows the approved empty marker", async () => {

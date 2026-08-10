@@ -97,6 +97,17 @@ export const DASHBOARD_HTML = String.raw`<!doctype html>
   .deny { color:var(--deny); border-color:var(--deny); }
   .allow { color:var(--ok); border-color:var(--ok); }
   .turn { min-width:0; margin:var(--space-3) 0; padding:var(--space-4); overflow-wrap:anywhere; border:1px solid var(--line); border-radius:var(--radius); background:var(--paper-2); color:var(--ink); }
+  .perm { display:flex; align-items:center; flex-wrap:wrap; gap:var(--space-2); margin:var(--space-2) 0; padding:var(--space-2) var(--space-3); border-left:3px solid var(--warn); border-radius:var(--radius); background:var(--warn-soft); color:var(--ink); }
+  .perm-deny { border-left-color:var(--deny); background:var(--deny-soft); color:var(--ink); }
+  .perm-allow { border-left-color:var(--ok); background:var(--ok-soft); color:var(--ink); }
+  .perm-warn { border-left-color:var(--warn); background:var(--warn-soft); color:var(--ink); }
+  .perm-decision { background:var(--paper); color:var(--ink); font-weight:700; }
+  .perm-deny .perm-decision { border-color:var(--deny); color:var(--deny); }
+  .perm-allow .perm-decision { border-color:var(--ok); color:var(--ok); }
+  .perm-warn .perm-decision { border-color:var(--warn); color:var(--warn); }
+  .perm-rule { background:var(--paper); color:var(--ink); }
+  .perm-meta { color:var(--muted); font-size:var(--text-xs); }
+  .perm-tool { font-family:var(--font-mono); font-size:var(--text-sm); }
   .muted { color:var(--muted); }
   .row { display:flex; flex-wrap:wrap; gap:var(--space-2); margin:var(--space-2) 0; }
   .cols { display:grid; grid-template-columns:minmax(0,1fr) minmax(0,1fr); gap:var(--space-4); }
@@ -203,10 +214,10 @@ function turnHtml(t) {
   const tools = t.toolCalls.map((c) => '<span class="pill">' + esc(c.kind) + ": " + esc(c.title || c.toolCallId) + "</span>").join(" ");
   const files = t.fileTouches.map((f) => '<span class="pill">' + esc(f.mode) + " " + esc(f.path) + "</span>").join(" ");
   const perms = t.permissions.map((p) => {
-    const cls = p.decision === "deny" ? " deny" : p.decision === "allow" ? " allow" : "";
-    const who = p.decidedBy ? " · " + esc(p.decidedBy) : "";
-    const rule = p.rule ? ' <span class="badge">' + esc(p.rule) + "</span>" : "";
-    return '<div class="row"><span class="badge' + cls + '">' + esc(p.decision || "pending") + "</span> " + esc(p.toolCallId || "") + who + rule + "</div>";
+    const cls = p.decision === "deny" ? "perm-deny" : p.decision === "allow" ? "perm-allow" : "perm-warn";
+    const who = p.decidedBy ? '<span class="perm-meta"> · ' + esc(p.decidedBy) + "</span>" : "";
+    const rule = p.rule ? ' <span class="badge perm-rule">' + esc(p.rule) + "</span>" : "";
+    return '<div class="perm ' + cls + '"><span class="badge perm-decision">' + esc(p.decision || "pending") + '</span> <code class="perm-tool">' + esc(p.toolCallId || "") + "</code>" + who + rule + "</div>";
   }).join("");
   const usage = t.usageSource ? '<span class="muted">' + token(t.tokensIn) + " in / " + token(t.tokensOut) + " out · " + cost(t.costUsd) + estMark(t.usageSource) + "</span>" : "";
   return '<article class="turn"><b>Turn ' + esc(t.seq) + "</b> " + usage + '<div class="row muted"><code>' + esc(t.prompt) + "</code></div>" + (tools ? '<div class="row">' + tools + "</div>" : "") + (files ? '<div class="row">' + files + "</div>" : "") + perms + "</article>";
