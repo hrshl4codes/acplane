@@ -145,6 +145,19 @@ test("page is a self-contained document with the app mount and no external asset
   expect(DASHBOARD_HTML).not.toMatch(/@import\s+(?:url\()?\s*["']?https?:/i);
 });
 
+test("page uses the locked token system and no raw hex in rules", () => {
+  expect(DASHBOARD_HTML).toContain("--accent");
+  expect(DASHBOARD_HTML).toContain("oklch(");
+  expect(DASHBOARD_HTML).not.toMatch(/:\s*#[0-9a-fA-F]{6}\b/);
+});
+
+test("page masthead identifies the product context and keeps dashboard navigation", () => {
+  expect(DASHBOARD_HTML).toContain('<div class="masthead-brand">');
+  expect(DASHBOARD_HTML).toContain('<strong class="wordmark">acplane</strong>');
+  expect(DASHBOARD_HTML).toContain("Agent session observability");
+  expect(DASHBOARD_HTML).toContain('<nav aria-label="Dashboard">');
+});
+
 test("page implements exactly the four approved hash route families", () => {
   expect(DASHBOARD_HTML).toContain('data-route="#/"');
   expect(DASHBOARD_HTML).toContain('data-route="#/lineage"');
@@ -189,20 +202,20 @@ test("page renders permission decisions and governing rules distinctly", () => {
   );
   expect(DASHBOARD_HTML).toContain('esc(p.rule)');
   expect(DASHBOARD_HTML).toMatch(/\.deny\s*\{[^}]*var\(--deny\)/);
-  expect(DASHBOARD_HTML).toMatch(/\.allow\s*\{[^}]*var\(--allow\)/);
+  expect(DASHBOARD_HTML).toMatch(/\.allow\s*\{[^}]*var\(--ok\)/);
 });
 
 test("page contains local table scrolling and a stacked mobile comparison", () => {
   expect(DASHBOARD_HTML).toContain('class="table-wrap"');
   expect(DASHBOARD_HTML).toMatch(/\.table-wrap\s*\{[^}]*overflow-x:\s*auto/);
   expect(DASHBOARD_HTML).toMatch(/@media\s*\(max-width:\s*760px\)[\s\S]*?\.cols\s*\{[^}]*grid-template-columns:\s*1fr/);
-  expect(DASHBOARD_HTML).toMatch(/body\s*\{[^}]*overflow-x:\s*hidden/);
+  expect(DASHBOARD_HTML).toMatch(/html,\s*body\s*\{[^}]*overflow-x:\s*clip/);
   expect(DASHBOARD_HTML).toMatch(/:focus-visible/);
 });
 
 test("programmatic route-heading focus is visually quiet without removing interactive rings", () => {
   expect(DASHBOARD_HTML).toContain('app.querySelector("[data-route-heading]")?.focus()');
-  expect(DASHBOARD_HTML).toMatch(/:focus-visible\s*\{[^}]*outline:2px solid var\(--accent\)/);
+  expect(DASHBOARD_HTML).toMatch(/:focus-visible\s*\{[^}]*outline:2px solid var\(--focus\)/);
   expect(DASHBOARD_HTML).toMatch(
     /\[data-route-heading\]:focus\s*\{[^}]*outline:\s*none/,
   );
