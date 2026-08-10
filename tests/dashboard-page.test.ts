@@ -16,6 +16,12 @@ function extractScript(): string {
   return source.replace(/\nroute\(\);\s*$/, "");
 }
 
+function extractStylesheet(): string {
+  const source = DASHBOARD_HTML.match(/<style>([\s\S]*?)<\/style>/)?.[1];
+  if (!source) throw new Error("dashboard inline stylesheet not found");
+  return source;
+}
+
 function mockElement(attributes: Record<string, string> = {}) {
   const classes = new Set<string>();
   return {
@@ -145,10 +151,50 @@ test("page is a self-contained document with the app mount and no external asset
   expect(DASHBOARD_HTML).not.toMatch(/@import\s+(?:url\()?\s*["']?https?:/i);
 });
 
-test("page uses the locked token system and no raw hex in rules", () => {
-  expect(DASHBOARD_HTML).toContain("--accent");
-  expect(DASHBOARD_HTML).toContain("oklch(");
-  expect(DASHBOARD_HTML).not.toMatch(/:\s*#[0-9a-fA-F]{6}\b/);
+test("stylesheet declares the complete locked token system without legacy colors", () => {
+  const stylesheet = extractStylesheet();
+  const requiredRoles = [
+    "paper", "paper-2", "ink", "muted", "line", "accent", "accent-ink", "focus",
+    "ok", "deny", "warn", "accent-soft", "ok-soft", "deny-soft", "warn-soft",
+    "font-ui", "font-mono", "text-xs", "text-sm", "text-md", "text-lg", "text-xl",
+    "space-1", "space-2", "space-3", "space-4", "space-6", "space-8", "space-12",
+    "radius", "radius-pill", "ease-out", "dur-fast", "dur", "dur-slow",
+  ];
+
+  for (const role of requiredRoles) expect(stylesheet).toContain(`--${role}:`);
+  expect(stylesheet).toContain("oklch(");
+  expect(stylesheet).not.toMatch(/#(?:[0-9a-fA-F]{3,4}|[0-9a-fA-F]{6}|[0-9a-fA-F]{8})\b/);
+  expect(stylesheet).not.toMatch(/\b(?:rgba?|hsla?|color)\s*\(/i);
+});
+
+test("raw OKLCH colors stay inside token declaration blocks", () => {
+  const rules = extractStylesheet().replace(/:root\s*\{[^}]*\}/g, "");
+  expect(rules).not.toMatch(/\b(?:oklch|color-mix)\s*\(/i);
+});
+
+test("masthead uses the locked type scale without page-only tokens", () => {
+  const stylesheet = extractStylesheet();
+  expect(stylesheet).not.toContain("--text-wordmark:");
+  expect(stylesheet).toMatch(/\.wordmark\s*\{[^}]*font-size:var\(--text-xl\)/);
+});
+
+test("small links use ink text with accent reserved for non-text cues", () => {
+  const stylesheet = extractStylesheet();
+  const withoutWordmark = stylesheet.replace(/\.wordmark\s*\{[^}]*\}/g, "");
+  expect(withoutWordmark).not.toMatch(/(?:^|[;{]\s*)color:var\(--accent\)/m);
+  expect(stylesheet).toMatch(/\.session-link\s*\{[^}]*color:var\(--ink\)/);
+  expect(stylesheet).toMatch(/\.session-link\s*\{[^}]*text-decoration-color:var\(--accent\)/);
+  expect(stylesheet).toMatch(/header a\.active::after\s*\{[^}]*background:var\(--accent\)/);
+});
+
+test("base table cells do not claim numeric typography before Task 3", () => {
+  const stylesheet = extractStylesheet();
+  expect(stylesheet).not.toMatch(/\btd\s*\{[^}]*font-variant-numeric/);
+  expect(stylesheet).toMatch(/code\s*\{[^}]*font-variant-numeric:tabular-nums/);
+});
+
+test("select uses the contrast-safe locked boundary token", () => {
+  expect(extractStylesheet()).toMatch(/select\s*\{[^}]*border:1px solid var\(--muted\)/);
 });
 
 test("page masthead identifies the product context and keeps dashboard navigation", () => {
