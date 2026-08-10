@@ -1,6 +1,7 @@
 import { existsSync, mkdtempSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
+import Database from "better-sqlite3";
 import { afterEach, expect, test, vi } from "vitest";
 import { runIndex } from "../src/index-cmd.js";
 
@@ -37,6 +38,7 @@ function writeSessionFile(parent: string): string {
 }
 
 afterEach(() => {
+  vi.restoreAllMocks();
   vi.useRealTimers();
   if (directory) rmSync(directory, { recursive: true, force: true });
   directory = undefined;
@@ -133,4 +135,44 @@ test("TTY indexing failure closes the database and spinner without masking the e
   expect(vi.getTimerCount()).toBe(0);
   expect(existsSync(`${dbPath}-wal`)).toBe(false);
   expect(existsSync(`${dbPath}-shm`)).toBe(false);
+});
+
+test("TTY database open failure terminates the spinner and preserves the SQLite error", async () => {
+  vi.useFakeTimers();
+  directory = mkdtempSync(join(tmpdir(), "acplane-index-brand-"));
+  const file = writeSessionFile(directory);
+  const dbPath = join(directory, "missing-parent", "index.db");
+  const { humanOutput, writes } = createHumanOutput(true);
+
+  const result = runIndex({ db: dbPath, files: [file], humanOutput });
+  const rejection = expect(result).rejects.toMatchObject({
+    name: "TypeError",
+    message: "Cannot open database because the directory does not exist",
+  });
+  await vi.advanceTimersByTimeAsync(480);
+  await rejection;
+
+  expect(writes.join("")).toContain("✗ acplane: failed to index sessions");
+  expect(vi.getTimerCount()).toBe(0);
+});
+
+test("TTY database close failure terminates the spinner without masking the close error", async () => {
+  vi.useFakeTimers();
+  directory = mkdtempSync(join(tmpdir(), "acplane-index-brand-"));
+  const file = writeSessionFile(directory);
+  const { humanOutput, writes } = createHumanOutput(true);
+  const closeError = new Error("injected database close failure");
+  const realClose = Database.prototype.close;
+  vi.spyOn(Database.prototype, "close").mockImplementation(function (this: Database.Database) {
+    realClose.call(this);
+    throw closeError;
+  });
+
+  const result = runIndex({ db: join(directory, "index.db"), files: [file], humanOutput });
+  const rejection = expect(result).rejects.toBe(closeError);
+  await vi.advanceTimersByTimeAsync(480);
+  await rejection;
+
+  expect(writes.join("")).toContain("✗ acplane: failed to index sessions");
+  expect(vi.getTimerCount()).toBe(0);
 });

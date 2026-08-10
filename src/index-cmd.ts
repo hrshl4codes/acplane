@@ -54,10 +54,11 @@ export async function runIndex(args: IndexArgs): Promise<number> {
   if (style.tty) await printBanner(humanOutput, style, `v${getVersion()}`);
   const spinner = createSpinner(humanOutput, style, "Indexing sessions");
 
-  const db = openDb(dbPath);
+  let db: ReturnType<typeof openDb> | undefined;
   let turns = 0;
   let tools = 0;
   try {
+    db = openDb(dbPath);
     for (const file of files) {
       const id = basename(file, ".jsonl");
       const normalized = normalizeSession(id, harnessFromSessionId(id), readSessionEvents(file));
@@ -66,16 +67,19 @@ export async function runIndex(args: IndexArgs): Promise<number> {
       tools += normalized.toolCalls.length;
       spinner.setLabel(`Indexing ${basename(file)}`);
     }
+    db.close();
+    db = undefined;
   } catch (error) {
-    try {
-      db.close();
-    } catch {
-      // Preserve the indexing error if cleanup also fails.
+    if (db) {
+      try {
+        db.close();
+      } catch {
+        // Preserve the primary operation error if cleanup also fails.
+      }
     }
     if (style.tty) spinner.fail("acplane: failed to index sessions");
     throw error;
   }
-  db.close();
 
   if (style.tty && files.length === 0) {
     spinner.fail("acplane: nothing to index");
