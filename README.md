@@ -124,15 +124,16 @@ Use `--sessions <directory>` to select another recordings directory,
 
 ### Terminal output
 
-CLI commands use branding on interactive terminals. `index` shows progress, and
-`ui` shows its banner before the dashboard address. When their human output is
-redirected, those commands retain their existing plain summary or startup
-lines. The proxy writes its human-readable startup status only to an
-interactive stderr stream; its stdout is reserved for ACP wire messages and is
-never decorated.
+`--help`, `index`, and `ui` show their banner or progress display on interactive
+terminals. `--version` always prints a plain version line. When `index` or
+`ui` human output is redirected, the command retains its existing plain summary
+or startup line. The proxy has no banner: it writes a compact status only to
+interactive stderr. Its stdout is reserved for ACP wire messages and is never
+decorated.
 
-Set `NO_COLOR` (including `NO_COLOR=`) to suppress ANSI styling. The terminal
-formatting uses raw ANSI sequences and adds no dependencies.
+ANSI styling is disabled when `NO_COLOR` is present (including `NO_COLOR=`) or
+when `TERM=dumb`. The terminal formatting uses raw ANSI sequences and adds no
+dependencies.
 
 ## What a recording looks like
 
