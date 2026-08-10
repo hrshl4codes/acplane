@@ -1,7 +1,7 @@
 import { randomBytes } from "node:crypto";
 import { homedir } from "node:os";
 import { join } from "node:path";
-import { detectStyle } from "./brand/ansi.js";
+import { detectStyle, dim } from "./brand/ansi.js";
 import { getVersion, renderHelp } from "./brand/banner.js";
 import { loadConfig } from "./config.js";
 import { parseUiArgs, runUi } from "./dashboard-cmd.js";
@@ -54,6 +54,7 @@ export interface RunProxyOptions extends CliArgs {
   sessionsDir?: string;
   input?: NodeJS.ReadableStream;
   output?: NodeJS.WritableStream;
+  humanOutput?: NodeJS.WritableStream & { isTTY?: boolean };
 }
 
 export async function runProxy(options: RunProxyOptions): Promise<number> {
@@ -61,6 +62,12 @@ export async function runProxy(options: RunProxyOptions): Promise<number> {
   const harnessName = options.harness ?? config.defaultHarness;
   const harness = config.harnesses[harnessName];
   if (!harness) throw new Error(`acplane: harness "${harnessName}" not found in config`);
+
+  const humanOutput = options.humanOutput ?? process.stderr;
+  const style = detectStyle(humanOutput);
+  if (style.tty) {
+    humanOutput.write(dim(`acplane v${getVersion()} · proxying ${harnessName}`, style) + "\n");
+  }
 
   const ruleset = loadRuleset(options.policy, config.policy);
   const interceptor = createPermissionInterceptor(ruleset);
