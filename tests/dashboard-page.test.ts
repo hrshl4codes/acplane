@@ -189,22 +189,40 @@ test("raw OKLCH colors stay inside token declaration blocks", () => {
   expect(rules).not.toMatch(/\b(?:oklch|color-mix)\s*\(/i);
 });
 
-test("Hallmark stamp records the locked stat-led app audit without marketing chrome", () => {
+test("Hallmark stamp records the verified stat-led app audit without exceptions", () => {
   const stylesheet = extractStylesheet();
 
   expect(stylesheet).toContain("Hallmark · pre-emit critique: P5 H5 E5 S5 R5 V4");
   expect(stylesheet).toContain("macrostructure: Stat-Led app adaptation");
   expect(stylesheet).toContain("theme: custom cool sky-cyan instrumentation");
-  expect(stylesheet).toContain("nav: N9 app adaptation");
+  expect(stylesheet).toContain("nav: preserved dashboard route bar/app nav");
   expect(stylesheet).toContain("hero/footer: none");
   expect(stylesheet).toContain("contrast: pass (40–41)");
+  expect(stylesheet).toContain("slop: pass (1–58)");
   expect(stylesheet).toContain("honest: pass (46)");
   expect(stylesheet).toContain("chrome: pass (47)");
   expect(stylesheet).toContain("tokens: pass (48)");
   expect(stylesheet).toContain("icons: pass (30)");
+  expect(stylesheet).toContain("gate 1: no display face/app UI");
+  expect(stylesheet).toContain("gate 5: semantic open row, not a card");
+  expect(stylesheet).toContain("n/a: hero/footer/enrichment gates");
+  expect(stylesheet).not.toContain("exceptions:");
   expect(stylesheet).not.toMatch(/font-style:\s*italic/);
   expect(stylesheet).not.toMatch(/transition:\s*all/);
   expect(DASHBOARD_HTML).not.toMatch(/<(?:svg|canvas|footer)\b/i);
+});
+
+test("compare columns stay open around turn cards and each hover has one visual signal", () => {
+  const stylesheet = extractStylesheet();
+  const comparePanel = stylesheet.match(/\.compare-panel\s*\{([^}]*)\}/)?.[1];
+
+  expect(comparePanel).toContain("min-width:0");
+  expect(comparePanel).not.toMatch(/(?:border|background|border-radius|padding)\s*:/);
+  expect(stylesheet).toMatch(
+    /\.cols::before\s*\{[^}]*background:var\(--line\)[^}]*content:""/,
+  );
+  expect(stylesheet).toMatch(/\.session-row:hover\s*\{[^}]*transform:translateY\(-1px\)/);
+  expect(stylesheet).not.toMatch(/\.session-row:hover td\s*\{/);
 });
 
 test("masthead uses the locked type scale without page-only tokens", () => {
@@ -220,6 +238,39 @@ test("small links use ink text with accent reserved for non-text cues", () => {
   expect(stylesheet).toMatch(/\.session-link\s*\{[^}]*color:var\(--ink\)/);
   expect(stylesheet).toMatch(/\.session-link\s*\{[^}]*text-decoration-color:var\(--accent\)/);
   expect(stylesheet).toMatch(/header a\.active::after\s*\{[^}]*background:var\(--accent\)/);
+});
+
+test("links and selects provide explicit tokenized interaction states", () => {
+  const stylesheet = extractStylesheet();
+
+  expect(stylesheet).toMatch(/header a\s*\{[^}]*line-height:1/);
+  expect(stylesheet).toMatch(
+    /header a:hover\s*\{[^}]*text-underline-offset:2px/,
+  );
+  expect(stylesheet).toMatch(
+    /\.session-link\s*\{[^}]*text-underline-offset:2px/,
+  );
+  expect(stylesheet).toMatch(
+    /\.session-link:hover\s*\{[^}]*color:var\(--ink\)[^}]*text-decoration-color:var\(--accent\)/,
+  );
+  expect(stylesheet).toMatch(
+    /\.session-link:active\s*\{[^}]*color:var\(--ink\)[^}]*text-decoration-color:var\(--accent\)/,
+  );
+  expect(stylesheet).toMatch(
+    /select\s*\{[^}]*outline:2px solid transparent[^}]*outline-offset:1px/,
+  );
+  expect(stylesheet).toMatch(
+    /select:hover\s*\{[^}]*border-color:var\(--ink\)[^}]*background:var\(--paper-2\)/,
+  );
+  expect(stylesheet).toMatch(
+    /select:active\s*\{[^}]*border-color:var\(--ink\)[^}]*background:var\(--paper-2\)/,
+  );
+  expect(stylesheet).toMatch(
+    /select:focus-visible\s*\{[^}]*outline:2px solid var\(--focus\)[^}]*outline-offset:1px/,
+  );
+  expect(stylesheet).toMatch(
+    /select:disabled\s*\{[^}]*cursor:not-allowed[^}]*opacity:\.55/,
+  );
 });
 
 test("session data cells opt into mono tabular typography without styling every table cell", () => {
@@ -499,7 +550,7 @@ test("compare keeps a missing response side explicit", async () => {
 
   expect(harness.app.innerHTML).toContain("Not found");
   expect(harness.app.innerHTML).toContain(
-    '<section class="compare-panel" aria-labelledby="compare-panel-a"><h3 class="compare-panel-header" id="compare-panel-a">A: Not found</h3>',
+    '<section class="compare-panel" aria-labelledby="compare-panel-a"><h3 class="compare-panel-header" id="compare-panel-a">Session A</h3><p class="muted">Not found</p>',
   );
   expect(harness.app.innerHTML).toContain("harness-second");
 });
@@ -743,10 +794,10 @@ test("compare panels name each escaped harness and session without changing the 
   const html = harness.app.innerHTML;
   expect(html).toContain('<section class="compare-panel" aria-labelledby="compare-panel-a">');
   expect(html).toContain(
-    '<h3 class="compare-panel-header" id="compare-panel-a"><span class="pill harness-chip">left&amp;&lt;</span><code class="compare-panel-id">left/&quot;&lt;</code></h3>',
+    '<h3 class="compare-panel-header" id="compare-panel-a"><span class="compare-panel-label">Session A</span><span class="pill harness-chip">left&amp;&lt;</span><code class="compare-panel-id">left/&quot;&lt;</code></h3>',
   );
   expect(html).toContain(
-    '<section class="compare-panel" aria-labelledby="compare-panel-b"><h3 class="compare-panel-header" id="compare-panel-b"><span class="pill harness-chip">right</span><code class="compare-panel-id">right</code></h3>',
+    '<section class="compare-panel" aria-labelledby="compare-panel-b"><h3 class="compare-panel-header" id="compare-panel-b"><span class="compare-panel-label">Session B</span><span class="pill harness-chip">right</span><code class="compare-panel-id">right</code></h3>',
   );
   expect(html).not.toContain("left/<");
   expect(harness.controls.ca.value).toBe("first");

@@ -6,9 +6,9 @@ export const DASHBOARD_HTML = String.raw`<!doctype html>
 <title>acplane</title>
 <style>
   /* Hallmark · pre-emit critique: P5 H5 E5 S5 R5 V4
-   * macrostructure: Stat-Led app adaptation · theme: custom cool sky-cyan instrumentation · nav: N9 app adaptation · hero/footer: none
-   * contrast: pass (40–41) · slop: static pass (1–58) · honest: pass (46) · chrome: pass (47) · tokens: pass (48) · responsive: static pass (34, 49–57) · icons: pass (30) · mobile: static pass (34, 49–57)
-   * app exceptions: 1 system UI/no display face; 5 required semantic 3px permission rail; 26/39 native controls; 42–45 N9 app chrome/no hero-footer · rendered QA: coordinator
+   * macrostructure: Stat-Led app adaptation · theme: custom cool sky-cyan instrumentation · nav: preserved dashboard route bar/app nav · hero/footer: none
+   * contrast: pass (40–41) · slop: pass (1–58) · honest: pass (46) · chrome: pass (47) · tokens: pass (48) · responsive: static pass (34, 49–57) · icons: pass (30) · mobile: static pass (34, 49–57)
+   * gate 1: no display face/app UI · gate 5: semantic open row, not a card · n/a: hero/footer/enrichment gates · rendered QA: coordinator
    */
   :root {
     color-scheme:light;
@@ -71,13 +71,14 @@ export const DASHBOARD_HTML = String.raw`<!doctype html>
   .wordmark { color:var(--accent); font-family:var(--font-ui); font-size:var(--text-xl); font-style:normal; font-weight:700; letter-spacing:-.035em; line-height:1; white-space:nowrap; }
   .masthead-context { color:var(--muted); font-size:var(--text-lg); white-space:nowrap; }
   header nav { display:flex; align-items:stretch; flex-wrap:nowrap; gap:var(--space-2); }
-  header a { position:relative; display:grid; min-height:44px; padding:0 var(--space-4); place-items:center; color:var(--ink); font-size:var(--text-lg); font-weight:600; text-decoration:none; white-space:nowrap; }
+  header a { position:relative; display:grid; min-height:44px; padding:0 var(--space-4); place-items:center; color:var(--ink); font-size:var(--text-lg); font-weight:600; line-height:1; text-decoration:none; white-space:nowrap; }
   header a.active { color:var(--ink); }
   header a.active::after { position:absolute; right:0; bottom:0; left:0; height:2px; background:var(--accent); content:""; }
   @media (hover:hover) and (pointer:fine) {
-    header a:hover { color:var(--ink); text-decoration:underline; text-decoration-color:var(--accent); text-decoration-thickness:2px; text-underline-offset:var(--space-1); }
+    header a:hover { color:var(--ink); text-decoration:underline; text-decoration-color:var(--accent); text-decoration-thickness:2px; text-underline-offset:2px; }
+    .session-link:hover { color:var(--ink); text-decoration-color:var(--accent); }
+    select:hover { border-color:var(--ink); background:var(--paper-2); }
     .session-row:hover { transform:translateY(-1px); }
-    .session-row:hover td { background:var(--paper-2); color:var(--ink); }
   }
   header a:active { color:var(--ink); }
   :focus-visible { outline:2px solid var(--focus); outline-offset:3px; }
@@ -97,7 +98,8 @@ export const DASHBOARD_HTML = String.raw`<!doctype html>
   .stat-deny { background:var(--deny-soft); }
   .stat-deny .stat-value { color:var(--deny); }
   .session-data { font-family:var(--font-mono); font-variant-numeric:tabular-nums; }
-  .session-link { color:var(--ink); text-decoration:underline; text-decoration-color:var(--accent); text-decoration-thickness:1px; text-underline-offset:3px; white-space:nowrap; }
+  .session-link { color:var(--ink); text-decoration:underline; text-decoration-color:var(--accent); text-decoration-thickness:1px; text-underline-offset:2px; white-space:nowrap; }
+  .session-link:active { color:var(--ink); text-decoration-color:var(--accent); }
   .pill { display:inline-block; max-width:100%; padding:var(--space-1) var(--space-2); overflow-wrap:anywhere; border:1px solid var(--line); border-radius:var(--radius-pill); background:var(--paper-2); color:var(--ink); font-family:var(--font-mono); font-size:var(--text-sm); }
   .harness-chip { border-color:var(--accent); background:var(--accent-soft); }
   .badge { display:inline-block; padding:var(--space-1) var(--space-2); border:1px solid var(--line); border-radius:var(--radius); background:var(--paper); color:var(--ink); font-family:var(--font-mono); font-size:var(--text-xs); }
@@ -122,7 +124,7 @@ export const DASHBOARD_HTML = String.raw`<!doctype html>
   .count-read { border-color:var(--muted); background:var(--paper-2); color:var(--muted); }
   .count-write { border-color:var(--warn); background:var(--warn-soft); color:var(--warn); }
   .compare-controls { display:flex; flex-wrap:wrap; gap:var(--space-2); margin:0 0 var(--space-4); }
-  .compare-panel { min-width:0; padding:var(--space-4); border:1px solid var(--line); border-radius:var(--radius); background:var(--paper-2); color:var(--ink); }
+  .compare-panel { min-width:0; }
   .compare-panel-header { display:flex; align-items:center; flex-wrap:wrap; gap:var(--space-2); min-width:0; margin:0 0 var(--space-3); padding:0 0 var(--space-3); border-bottom:1px solid var(--line); font-family:var(--font-ui); font-size:var(--text-md); font-style:normal; font-weight:700; line-height:1.2; }
   .compare-panel-id { min-width:0; overflow-wrap:anywhere; color:var(--muted); font-family:var(--font-mono); font-size:var(--text-sm); }
   .muted { color:var(--muted); }
@@ -133,7 +135,9 @@ export const DASHBOARD_HTML = String.raw`<!doctype html>
   h2 { min-width:0; margin:var(--space-2) 0 var(--space-4); overflow-wrap:anywhere; font-family:var(--font-ui); font-size:var(--text-xl); font-style:normal; font-weight:700; letter-spacing:-.025em; line-height:1.2; }
   .est { color:var(--muted); font-size:var(--text-xs); }
   label { display:inline-flex; align-items:center; gap:var(--space-2); }
-  select { max-width:min(34vw,320px); min-height:44px; padding:var(--space-2) var(--space-3); border:1px solid var(--muted); border-radius:var(--radius); background:var(--paper); color:var(--ink); font-family:var(--font-ui); font-size:var(--text-sm); line-height:1.5; }
+  select { max-width:min(34vw,320px); min-height:44px; padding:var(--space-2) var(--space-3); border:1px solid var(--muted); border-radius:var(--radius); outline:2px solid transparent; outline-offset:1px; background:var(--paper); color:var(--ink); font-family:var(--font-ui); font-size:var(--text-sm); line-height:1.5; }
+  select:active { border-color:var(--ink); background:var(--paper-2); }
+  select:focus-visible { outline:2px solid var(--focus); outline-offset:1px; border-color:var(--ink); }
   select:disabled { color:var(--muted); cursor:not-allowed; opacity:.55; }
   @keyframes initial-load { from { opacity:0; } to { opacity:1; } }
   @keyframes route-enter { from { opacity:0; } to { opacity:1; } }
@@ -288,7 +292,7 @@ async function compareView(params, generation, signal) {
 
   const opts = (selected) => sessions.map((session) => '<option value="' + esc(session.id) + '"' + (selected === String(session.id) ? " selected" : "") + ">" + esc(session.harness) + " · " + esc(session.id) + "</option>").join("");
   const comparison = await j("/api/compare?a=" + encodeURIComponent(a) + "&b=" + encodeURIComponent(b), signal);
-  const panel = (detail, label) => detail ? '<section class="compare-panel" aria-labelledby="compare-panel-' + label.toLowerCase() + '"><h3 class="compare-panel-header" id="compare-panel-' + label.toLowerCase() + '"><span class="pill harness-chip">' + esc(detail.session.harness) + '</span><code class="compare-panel-id">' + esc(detail.session.id) + "</code></h3>" + turnsHtml(detail.turns) + '</section>' : '<section class="compare-panel" aria-labelledby="compare-panel-' + label.toLowerCase() + '"><h3 class="compare-panel-header" id="compare-panel-' + label.toLowerCase() + '">' + esc(label) + ': Not found</h3><p class="muted">Not found</p></section>';
+  const panel = (detail, label) => detail ? '<section class="compare-panel" aria-labelledby="compare-panel-' + label.toLowerCase() + '"><h3 class="compare-panel-header" id="compare-panel-' + label.toLowerCase() + '"><span class="compare-panel-label">Session ' + esc(label) + '</span><span class="pill harness-chip">' + esc(detail.session.harness) + '</span><code class="compare-panel-id">' + esc(detail.session.id) + "</code></h3>" + turnsHtml(detail.turns) + '</section>' : '<section class="compare-panel" aria-labelledby="compare-panel-' + label.toLowerCase() + '"><h3 class="compare-panel-header" id="compare-panel-' + label.toLowerCase() + '">Session ' + esc(label) + '</h3><p class="muted">Not found</p></section>';
   const html = routeHeading("Compare") + '<div class="compare-controls"><label>A <select id="ca">' + opts(a) + '</select></label><label>B <select id="cb">' + opts(b) + '</select></label></div><div class="cols">' + panel(comparison.a, "A") + panel(comparison.b, "B") + "</div>";
   if (!commitRoute(generation, html, true)) return;
 
