@@ -108,6 +108,16 @@ export const DASHBOARD_HTML = String.raw`<!doctype html>
   .perm-rule { background:var(--paper); color:var(--ink); }
   .perm-meta { color:var(--muted); font-size:var(--text-xs); }
   .perm-tool { font-family:var(--font-mono); font-size:var(--text-sm); }
+  .lineage-path { font-family:var(--font-mono); }
+  .count-chip { display:inline-flex; align-items:baseline; gap:var(--space-1); padding:var(--space-1) var(--space-2); border:1px solid var(--line); border-radius:var(--radius-pill); font-family:var(--font-mono); font-size:var(--text-xs); font-variant-numeric:tabular-nums; }
+  .count-label { font-family:var(--font-ui); font-size:var(--text-xs); font-weight:700; letter-spacing:.04em; text-transform:uppercase; }
+  .count-read { border-color:var(--muted); background:var(--paper-2); color:var(--muted); }
+  .count-write { border-color:var(--warn); background:var(--warn-soft); color:var(--warn); }
+  .compare-controls { display:flex; flex-wrap:wrap; gap:var(--space-2); margin:0 0 var(--space-4); }
+  .compare-panel { min-width:0; padding:var(--space-4); border:1px solid var(--line); border-radius:var(--radius); background:var(--paper-2); color:var(--ink); }
+  .compare-panel + .compare-panel { border-inline-start:1px solid var(--line); }
+  .compare-panel-header { display:flex; align-items:center; flex-wrap:wrap; gap:var(--space-2); min-width:0; margin:0 0 var(--space-3); padding:0 0 var(--space-3); border-bottom:1px solid var(--line); }
+  .compare-panel-id { min-width:0; overflow-wrap:anywhere; color:var(--muted); font-family:var(--font-mono); font-size:var(--text-sm); }
   .muted { color:var(--muted); }
   .row { display:flex; flex-wrap:wrap; gap:var(--space-2); margin:var(--space-2) 0; }
   .cols { display:grid; grid-template-columns:minmax(0,1fr) minmax(0,1fr); gap:var(--space-4); }
@@ -234,7 +244,7 @@ async function detailView(id, generation, signal) {
 
 async function lineageView(generation, signal) {
   const entries = await j("/api/lineage", signal);
-  const rows = entries.map((entry) => "<tr><td><code>" + esc(entry.path) + "</code></td><td>" + esc(entry.readCount) + "</td><td>" + esc(entry.writeCount) + "</td><td>" + entry.sessions.map((session) => {
+  const rows = entries.map((entry) => "<tr><td><code class=\"lineage-path\">" + esc(entry.path) + "</code></td><td><span class=\"count-chip count-read\"><span class=\"count-label\">Read</span><span class=\"count-value\">" + esc(entry.readCount) + "</span></span></td><td><span class=\"count-chip count-write\"><span class=\"count-label\">Write</span><span class=\"count-value\">" + esc(entry.writeCount) + "</span></span></td><td>" + entry.sessions.map((session) => {
     const href = esc("#/session/" + encodeURIComponent(session.sessionId));
     return '<span class="pill"><a class="session-link" href="' + href + '"><code>' + esc(session.sessionId) + "</code></a> · " + esc(session.harness) + ": " + esc(session.modes.join("/")) + "</span>";
   }).join(" ") + "</td></tr>").join("");
@@ -261,8 +271,8 @@ async function compareView(params, generation, signal) {
 
   const opts = (selected) => sessions.map((session) => '<option value="' + esc(session.id) + '"' + (selected === String(session.id) ? " selected" : "") + ">" + esc(session.harness) + " · " + esc(session.id) + "</option>").join("");
   const comparison = await j("/api/compare?a=" + encodeURIComponent(a) + "&b=" + encodeURIComponent(b), signal);
-  const panel = (detail) => detail ? "<section>" + routeHeading(esc(detail.session.harness)) + turnsHtml(detail.turns) + '</section>' : '<div class="muted">Not found</div>';
-  const html = routeHeading("Compare") + '<div class="row"><label>A <select id="ca">' + opts(a) + '</select></label><label>B <select id="cb">' + opts(b) + '</select></label></div><div class="cols">' + panel(comparison.a) + panel(comparison.b) + "</div>";
+  const panel = (detail) => detail ? '<section class="compare-panel"><div class="compare-panel-header"><span class="pill harness-chip">' + esc(detail.session.harness) + '</span><code class="compare-panel-id">' + esc(detail.session.id) + "</code></div>" + turnsHtml(detail.turns) + '</section>' : '<section class="compare-panel"><p class="muted">Not found</p></section>';
+  const html = routeHeading("Compare") + '<div class="compare-controls"><label>A <select id="ca">' + opts(a) + '</select></label><label>B <select id="cb">' + opts(b) + '</select></label></div><div class="cols">' + panel(comparison.a) + panel(comparison.b) + "</div>";
   if (!commitRoute(generation, html, true)) return;
 
   const first = document.getElementById("ca");

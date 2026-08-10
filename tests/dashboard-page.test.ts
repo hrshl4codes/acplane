@@ -622,6 +622,83 @@ test("file lineage visibly distinguishes same-harness sessions with safe links",
   expect(harness.app.innerHTML).not.toContain("<two>");
 });
 
+test("lineage renders labelled tokenized counts while preserving paths and session links", async () => {
+  const harness = createPageHarness((url) => {
+    if (url === "/api/lineage") {
+      return [{
+        path: "src/unsafe<path>.ts",
+        readCount: 3,
+        writeCount: 1,
+        sessions: [{ sessionId: "session/one", harness: "codex", modes: ["read", "write"] }],
+      }];
+    }
+    throw new Error(`unexpected request: ${url}`);
+  });
+
+  await harness.route("#/lineage");
+
+  const html = harness.app.innerHTML;
+  expect(html).toContain('<code class="lineage-path">src/unsafe&lt;path&gt;.ts</code>');
+  expect(html).toContain(
+    '<span class="count-chip count-read"><span class="count-label">Read</span><span class="count-value">3</span></span>',
+  );
+  expect(html).toContain(
+    '<span class="count-chip count-write"><span class="count-label">Write</span><span class="count-value">1</span></span>',
+  );
+  expect(html).toContain(
+    '<a class="session-link" href="#/session/session%2Fone"><code>session/one</code></a> · codex: read/write',
+  );
+});
+
+test("compare panels name each escaped harness and session without changing the controls", async () => {
+  const harness = createPageHarness((url) => {
+    if (url === "/api/sessions") {
+      return [
+        { id: "first", harness: "one" },
+        { id: "second", harness: "two" },
+      ];
+    }
+    if (url === "/api/compare?a=first&b=second") {
+      return {
+        a: { session: { harness: "left&<", id: 'left/"<' }, turns: [] },
+        b: { session: { harness: "right", id: "right" }, turns: [] },
+      };
+    }
+    throw new Error(`unexpected request: ${url}`);
+  });
+
+  await harness.route("#/compare");
+
+  const html = harness.app.innerHTML;
+  expect(html).toContain('<section class="compare-panel">');
+  expect(html).toContain(
+    '<div class="compare-panel-header"><span class="pill harness-chip">left&amp;&lt;</span><code class="compare-panel-id">left/&quot;&lt;</code></div>',
+  );
+  expect(html).toContain(
+    '<div class="compare-panel-header"><span class="pill harness-chip">right</span><code class="compare-panel-id">right</code></div>',
+  );
+  expect(html).not.toContain("left/<");
+  expect(harness.controls.ca.value).toBe("first");
+  expect(harness.controls.cb.value).toBe("second");
+});
+
+test("lineage counts and comparison panels use only the locked semantic tokens", () => {
+  const stylesheet = extractStylesheet();
+
+  expect(stylesheet).toMatch(
+    /\.count-read\s*\{[^}]*color:var\(--muted\)[^}]*background:var\(--paper-2\)/,
+  );
+  expect(stylesheet).toMatch(
+    /\.count-write\s*\{[^}]*color:var\(--warn\)[^}]*background:var\(--warn-soft\)/,
+  );
+  expect(stylesheet).toMatch(
+    /\.compare-panel \+ \.compare-panel\s*\{[^}]*border-inline-start:1px solid var\(--line\)/,
+  );
+  expect(stylesheet).toMatch(
+    /\.compare-panel-id\s*\{[^}]*font-family:var\(--font-mono\)/,
+  );
+});
+
 test("catalog and timeline share honest null, zero, sub-cent, and ordinary costs", async () => {
   const costs = [null, 0, 0.004, 12.345];
   const sessions = costs.map((costUsd, index) => ({
