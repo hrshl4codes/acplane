@@ -3,6 +3,9 @@ import type { Server } from "node:http";
 import type { AddressInfo } from "node:net";
 import { homedir } from "node:os";
 import { join } from "node:path";
+import { bold, detectStyle, paint } from "./brand/ansi.js";
+import { getVersion, printBanner } from "./brand/banner.js";
+import { ACCENT } from "./brand/logo.js";
 import { createUiServer } from "./dashboard/server.js";
 import { openReadonlyDb } from "./db/schema.js";
 
@@ -10,6 +13,7 @@ export interface UiArgs {
   db?: string;
   port?: number;
   host?: string;
+  humanOutput?: NodeJS.WritableStream & { isTTY?: boolean };
 }
 
 function optionValue(argv: string[], index: number): string {
@@ -84,6 +88,7 @@ async function listen(server: Server, port: number, host: string): Promise<void>
 
 export async function runUi(args: UiArgs): Promise<number> {
   const dbPath = args.db ?? join(homedir(), ".acplane", "index.db");
+  const humanOutput = args.humanOutput ?? process.stderr;
   let db;
   try {
     db = openReadonlyDb(dbPath);
@@ -106,7 +111,32 @@ export async function runUi(args: UiArgs): Promise<number> {
 
   const host = args.host ?? "127.0.0.1";
   const shownPort = (server.address() as AddressInfo).port;
-  console.error(`acplane: dashboard on http://${host}:${shownPort} (Ctrl+C to stop)`);
+  const url = `http://${host}:${shownPort}`;
+  const style = detectStyle(humanOutput);
+  try {
+    if (style.tty) {
+      await printBanner(humanOutput, style, `v${getVersion()}`);
+      humanOutput.write(
+        `  ${bold("dashboard", style)} ${paint(url, ACCENT, style)}  ${style.color ? "\x1b[2m(Ctrl+C to stop)\x1b[22m" : "(Ctrl+C to stop)"}\n`,
+      );
+    } else if (args.humanOutput) {
+      humanOutput.write(`acplane: dashboard on ${url} (Ctrl+C to stop)\n`);
+    } else {
+      console.error(`acplane: dashboard on ${url} (Ctrl+C to stop)`);
+    }
+  } catch (error) {
+    try {
+      server.close();
+    } catch {
+      // Preserve the startup output error.
+    }
+    try {
+      db.close();
+    } catch {
+      // Preserve the startup output error.
+    }
+    throw error;
+  }
 
   return new Promise<number>((resolve, reject) => {
     let finished = false;
