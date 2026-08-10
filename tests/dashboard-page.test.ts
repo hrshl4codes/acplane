@@ -430,6 +430,9 @@ test("compare keeps a missing response side explicit", async () => {
   await harness.route("#/compare?a=first&b=second");
 
   expect(harness.app.innerHTML).toContain("Not found");
+  expect(harness.app.innerHTML).toContain(
+    '<section class="compare-panel" aria-labelledby="compare-panel-a"><h3 class="compare-panel-header" id="compare-panel-a">A: Not found</h3>',
+  );
   expect(harness.app.innerHTML).toContain("harness-second");
 });
 
@@ -670,12 +673,12 @@ test("compare panels name each escaped harness and session without changing the 
   await harness.route("#/compare");
 
   const html = harness.app.innerHTML;
-  expect(html).toContain('<section class="compare-panel">');
+  expect(html).toContain('<section class="compare-panel" aria-labelledby="compare-panel-a">');
   expect(html).toContain(
-    '<div class="compare-panel-header"><span class="pill harness-chip">left&amp;&lt;</span><code class="compare-panel-id">left/&quot;&lt;</code></div>',
+    '<h3 class="compare-panel-header" id="compare-panel-a"><span class="pill harness-chip">left&amp;&lt;</span><code class="compare-panel-id">left/&quot;&lt;</code></h3>',
   );
   expect(html).toContain(
-    '<div class="compare-panel-header"><span class="pill harness-chip">right</span><code class="compare-panel-id">right</code></div>',
+    '<section class="compare-panel" aria-labelledby="compare-panel-b"><h3 class="compare-panel-header" id="compare-panel-b"><span class="pill harness-chip">right</span><code class="compare-panel-id">right</code></h3>',
   );
   expect(html).not.toContain("left/<");
   expect(harness.controls.ca.value).toBe("first");
@@ -684,15 +687,18 @@ test("compare panels name each escaped harness and session without changing the 
 
 test("lineage counts and comparison panels use only the locked semantic tokens", () => {
   const stylesheet = extractStylesheet();
+  const countRead = stylesheet.match(/\.count-read\s*\{([^}]*)\}/)?.[1];
+  const countWrite = stylesheet.match(/\.count-write\s*\{([^}]*)\}/)?.[1];
 
+  expect(countRead).toMatch(/(?:^|;)\s*color:var\(--muted\)/);
+  expect(countRead).toContain("background:var(--paper-2)");
+  expect(countWrite).toMatch(/(?:^|;)\s*color:var\(--warn\)/);
+  expect(countWrite).toContain("background:var(--warn-soft)");
   expect(stylesheet).toMatch(
-    /\.count-read\s*\{[^}]*color:var\(--muted\)[^}]*background:var\(--paper-2\)/,
+    /\.cols::before\s*\{[^}]*position:absolute[^}]*background:var\(--line\)/,
   );
   expect(stylesheet).toMatch(
-    /\.count-write\s*\{[^}]*color:var\(--warn\)[^}]*background:var\(--warn-soft\)/,
-  );
-  expect(stylesheet).toMatch(
-    /\.compare-panel \+ \.compare-panel\s*\{[^}]*border-inline-start:1px solid var\(--line\)/,
+    /@media\s*\(max-width:\s*760px\)[\s\S]*?\.cols::before\s*\{[^}]*content:none/,
   );
   expect(stylesheet).toMatch(
     /\.compare-panel-id\s*\{[^}]*font-family:var\(--font-mono\)/,

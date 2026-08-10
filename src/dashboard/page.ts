@@ -115,12 +115,12 @@ export const DASHBOARD_HTML = String.raw`<!doctype html>
   .count-write { border-color:var(--warn); background:var(--warn-soft); color:var(--warn); }
   .compare-controls { display:flex; flex-wrap:wrap; gap:var(--space-2); margin:0 0 var(--space-4); }
   .compare-panel { min-width:0; padding:var(--space-4); border:1px solid var(--line); border-radius:var(--radius); background:var(--paper-2); color:var(--ink); }
-  .compare-panel + .compare-panel { border-inline-start:1px solid var(--line); }
-  .compare-panel-header { display:flex; align-items:center; flex-wrap:wrap; gap:var(--space-2); min-width:0; margin:0 0 var(--space-3); padding:0 0 var(--space-3); border-bottom:1px solid var(--line); }
+  .compare-panel-header { display:flex; align-items:center; flex-wrap:wrap; gap:var(--space-2); min-width:0; margin:0 0 var(--space-3); padding:0 0 var(--space-3); border-bottom:1px solid var(--line); font-family:var(--font-ui); font-size:var(--text-md); font-style:normal; font-weight:700; line-height:1.2; }
   .compare-panel-id { min-width:0; overflow-wrap:anywhere; color:var(--muted); font-family:var(--font-mono); font-size:var(--text-sm); }
   .muted { color:var(--muted); }
   .row { display:flex; flex-wrap:wrap; gap:var(--space-2); margin:var(--space-2) 0; }
-  .cols { display:grid; grid-template-columns:minmax(0,1fr) minmax(0,1fr); gap:var(--space-4); }
+  .cols { position:relative; display:grid; grid-template-columns:minmax(0,1fr) minmax(0,1fr); gap:var(--space-4); }
+  .cols::before { position:absolute; top:var(--space-4); bottom:var(--space-4); left:50%; width:1px; background:var(--line); content:""; pointer-events:none; }
   code { font-family:var(--font-mono); font-variant-numeric:tabular-nums; overflow-wrap:anywhere; }
   h2 { min-width:0; margin:var(--space-2) 0 var(--space-4); overflow-wrap:anywhere; font-family:var(--font-ui); font-size:var(--text-xl); font-style:normal; font-weight:700; letter-spacing:-.025em; line-height:1.2; }
   .est { color:var(--muted); font-size:var(--text-xs); }
@@ -136,6 +136,7 @@ export const DASHBOARD_HTML = String.raw`<!doctype html>
     header a { flex:1; min-width:0; padding:0 var(--space-1); font-size:var(--text-md); }
     main { padding:var(--space-4); }
     .cols { grid-template-columns:1fr; gap:var(--space-3); }
+    .cols::before { content:none; }
     select { max-width:calc(100vw - 70px); }
   }
   @media (prefers-reduced-motion:reduce) {
@@ -271,8 +272,8 @@ async function compareView(params, generation, signal) {
 
   const opts = (selected) => sessions.map((session) => '<option value="' + esc(session.id) + '"' + (selected === String(session.id) ? " selected" : "") + ">" + esc(session.harness) + " · " + esc(session.id) + "</option>").join("");
   const comparison = await j("/api/compare?a=" + encodeURIComponent(a) + "&b=" + encodeURIComponent(b), signal);
-  const panel = (detail) => detail ? '<section class="compare-panel"><div class="compare-panel-header"><span class="pill harness-chip">' + esc(detail.session.harness) + '</span><code class="compare-panel-id">' + esc(detail.session.id) + "</code></div>" + turnsHtml(detail.turns) + '</section>' : '<section class="compare-panel"><p class="muted">Not found</p></section>';
-  const html = routeHeading("Compare") + '<div class="compare-controls"><label>A <select id="ca">' + opts(a) + '</select></label><label>B <select id="cb">' + opts(b) + '</select></label></div><div class="cols">' + panel(comparison.a) + panel(comparison.b) + "</div>";
+  const panel = (detail, label) => detail ? '<section class="compare-panel" aria-labelledby="compare-panel-' + label.toLowerCase() + '"><h3 class="compare-panel-header" id="compare-panel-' + label.toLowerCase() + '"><span class="pill harness-chip">' + esc(detail.session.harness) + '</span><code class="compare-panel-id">' + esc(detail.session.id) + "</code></h3>" + turnsHtml(detail.turns) + '</section>' : '<section class="compare-panel" aria-labelledby="compare-panel-' + label.toLowerCase() + '"><h3 class="compare-panel-header" id="compare-panel-' + label.toLowerCase() + '">' + esc(label) + ': Not found</h3><p class="muted">Not found</p></section>';
+  const html = routeHeading("Compare") + '<div class="compare-controls"><label>A <select id="ca">' + opts(a) + '</select></label><label>B <select id="cb">' + opts(b) + '</select></label></div><div class="cols">' + panel(comparison.a, "A") + panel(comparison.b, "B") + "</div>";
   if (!commitRoute(generation, html, true)) return;
 
   const first = document.getElementById("ca");
