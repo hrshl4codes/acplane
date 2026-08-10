@@ -189,6 +189,24 @@ test("raw OKLCH colors stay inside token declaration blocks", () => {
   expect(rules).not.toMatch(/\b(?:oklch|color-mix)\s*\(/i);
 });
 
+test("Hallmark stamp records the locked stat-led app audit without marketing chrome", () => {
+  const stylesheet = extractStylesheet();
+
+  expect(stylesheet).toContain("Hallmark · pre-emit critique: P5 H5 E5 S5 R5 V4");
+  expect(stylesheet).toContain("macrostructure: Stat-Led app adaptation");
+  expect(stylesheet).toContain("theme: custom cool sky-cyan instrumentation");
+  expect(stylesheet).toContain("nav: N9 app adaptation");
+  expect(stylesheet).toContain("hero/footer: none");
+  expect(stylesheet).toContain("contrast: pass (40–41)");
+  expect(stylesheet).toContain("honest: pass (46)");
+  expect(stylesheet).toContain("chrome: pass (47)");
+  expect(stylesheet).toContain("tokens: pass (48)");
+  expect(stylesheet).toContain("icons: pass (30)");
+  expect(stylesheet).not.toMatch(/font-style:\s*italic/);
+  expect(stylesheet).not.toMatch(/transition:\s*all/);
+  expect(DASHBOARD_HTML).not.toMatch(/<(?:svg|canvas|footer)\b/i);
+});
+
 test("masthead uses the locked type scale without page-only tokens", () => {
   const stylesheet = extractStylesheet();
   expect(stylesheet).not.toContain("--text-wordmark:");

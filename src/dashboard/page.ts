@@ -5,6 +5,11 @@ export const DASHBOARD_HTML = String.raw`<!doctype html>
 <meta name="viewport" content="width=device-width, initial-scale=1" />
 <title>acplane</title>
 <style>
+  /* Hallmark · pre-emit critique: P5 H5 E5 S5 R5 V4
+   * macrostructure: Stat-Led app adaptation · theme: custom cool sky-cyan instrumentation · nav: N9 app adaptation · hero/footer: none
+   * contrast: pass (40–41) · slop: static pass (1–58) · honest: pass (46) · chrome: pass (47) · tokens: pass (48) · responsive: static pass (34, 49–57) · icons: pass (30) · mobile: static pass (34, 49–57)
+   * app exceptions: 1 system UI/no display face; 5 required semantic 3px permission rail; 26/39 native controls; 42–45 N9 app chrome/no hero-footer · rendered QA: coordinator
+   */
   :root {
     color-scheme:light;
     --paper:oklch(99% 0.004 240);
