@@ -81,9 +81,19 @@ export const DASHBOARD_HTML = String.raw`<!doctype html>
   table { width:100%; min-width:760px; border:1px solid var(--line); border-collapse:collapse; background:var(--paper); color:var(--ink); }
   th,td { padding:var(--space-2) var(--space-3); border-bottom:1px solid var(--line); text-align:left; vertical-align:top; }
   th { color:var(--muted); font-size:var(--text-xs); font-weight:700; letter-spacing:.04em; text-transform:uppercase; }
+  .stats { display:grid; grid-template-columns:repeat(3,minmax(0,1fr)); margin:0 0 var(--space-6); overflow:hidden; border:1px solid var(--line); border-radius:var(--radius); background:var(--paper); }
+  .stat { min-width:0; margin:0; padding:var(--space-4) var(--space-6); }
+  .stat + .stat { border-inline-start:1px solid var(--line); }
+  .stat-label { color:var(--muted); font-size:var(--text-xs); font-weight:700; letter-spacing:.08em; line-height:1.2; text-transform:uppercase; }
+  .stat-value { margin:var(--space-2) 0 0; color:var(--ink); font-family:var(--font-mono); font-size:var(--text-xl); font-variant-numeric:tabular-nums; line-height:1.2; }
+  .stat-deny { background:var(--deny-soft); }
+  .stat-deny .stat-value { color:var(--deny); }
+  .session-data { font-family:var(--font-mono); font-variant-numeric:tabular-nums; }
   .session-link { color:var(--ink); text-decoration:underline; text-decoration-color:var(--accent); text-decoration-thickness:1px; text-underline-offset:3px; }
   .pill { display:inline-block; max-width:100%; padding:var(--space-1) var(--space-2); overflow-wrap:anywhere; border:1px solid var(--line); border-radius:var(--radius-pill); background:var(--paper-2); color:var(--ink); font-family:var(--font-mono); font-size:var(--text-sm); }
+  .harness-chip { border-color:var(--accent); background:var(--accent-soft); }
   .badge { display:inline-block; padding:var(--space-1) var(--space-2); border:1px solid var(--line); border-radius:var(--radius); background:var(--paper); color:var(--ink); font-family:var(--font-mono); font-size:var(--text-xs); }
+  .session-denial { background:var(--deny-soft); }
   .deny { color:var(--deny); border-color:var(--deny); }
   .allow { color:var(--ok); border-color:var(--ok); }
   .turn { min-width:0; margin:var(--space-3) 0; padding:var(--space-4); overflow-wrap:anywhere; border:1px solid var(--line); border-radius:var(--radius); background:var(--paper-2); color:var(--ink); }
@@ -174,12 +184,19 @@ function tableHtml(label, headings, rows) {
 
 async function sessionsView(generation, signal) {
   const sessions = await j("/api/sessions", signal);
+  const totalCost = sessions.reduce((n, s) => n + (s.costUsd || 0), 0);
+  const anyCost = sessions.some((s) => s.costUsd != null);
+  const denials = sessions.reduce((n, s) => n + (s.denialCount || 0), 0);
+  const stats = '<div class="stats" aria-label="Session summary">' +
+    '<dl class="stat"><dt class="stat-label">Sessions</dt><dd class="stat-value">' + esc(sessions.length) + "</dd></dl>" +
+    '<dl class="stat"><dt class="stat-label">Cost</dt><dd class="stat-value">' + cost(anyCost ? totalCost : null) + "</dd></dl>" +
+    '<dl class="stat' + (denials > 0 ? " stat-deny" : "") + '"><dt class="stat-label">Denials</dt><dd class="stat-value">' + esc(denials) + "</dd></dl></div>";
   const rows = sessions.map((s) => {
     const href = esc("#/session/" + encodeURIComponent(s.id));
     const label = esc("Open " + s.harness + " session " + s.id);
-    return '<tr class="session-row"><td>' + esc(s.startedAt || "") + '</td><td><a class="session-link" href="' + href + '" aria-label="' + label + '"><span class="pill">' + esc(s.harness) + '</span></a></td><td>' + esc(s.turnCount) + '</td><td>' + esc(s.toolCallCount) + '</td><td>' + esc(s.fileCount) + '</td><td>' + esc((s.tokensIn || 0) + (s.tokensOut || 0)) + estMark(s.usageSource) + '</td><td>' + cost(s.costUsd) + '</td><td>' + (s.denialCount ? '<span class="badge deny">' + esc(s.denialCount) + '</span>' : "0") + "</td></tr>";
+    return '<tr class="session-row"><td class="session-data">' + esc(s.startedAt || "") + '</td><td><a class="session-link" href="' + href + '" aria-label="' + label + '"><span class="pill harness-chip">' + esc(s.harness) + '</span></a></td><td class="session-data">' + esc(s.turnCount) + '</td><td class="session-data">' + esc(s.toolCallCount) + '</td><td class="session-data">' + esc(s.fileCount) + '</td><td class="session-data">' + esc((s.tokensIn || 0) + (s.tokensOut || 0)) + estMark(s.usageSource) + '</td><td class="session-data">' + cost(s.costUsd) + '</td><td class="session-data">' + (s.denialCount ? '<span class="badge deny session-denial">' + esc(s.denialCount) + '</span>' : "0") + "</td></tr>";
   }).join("");
-  commitRoute(generation, routeHeading("Sessions") + tableHtml("Sessions", ["Started", "Harness", "Turns", "Tools", "Files", "Tokens", "Cost", "Denials"], rows), true);
+  commitRoute(generation, routeHeading("Sessions") + stats + tableHtml("Sessions", ["Started", "Harness", "Turns", "Tools", "Files", "Tokens", "Cost", "Denials"], rows), true);
 }
 
 function turnHtml(t) {

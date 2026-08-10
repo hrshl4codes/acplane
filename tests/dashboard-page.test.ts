@@ -143,6 +143,23 @@ function detail(id: string, turns: unknown[] = []) {
   return { session: { id, harness: `harness-${id}` }, turns };
 }
 
+function summary(overrides: Record<string, unknown> = {}) {
+  return {
+    id: "session",
+    startedAt: "2026-08-10T10:00:00.000Z",
+    harness: "codex",
+    turnCount: 1,
+    toolCallCount: 2,
+    fileCount: 3,
+    tokensIn: 100,
+    tokensOut: 50,
+    usageSource: "reported",
+    costUsd: 0.01,
+    denialCount: 0,
+    ...overrides,
+  };
+}
+
 test("page is a self-contained document with the app mount and no external assets", () => {
   expect(DASHBOARD_HTML).toContain("<!doctype html>");
   expect(DASHBOARD_HTML).toContain('<main id="app"><p class="muted" role="status">Loading…</p></main>');
@@ -187,10 +204,15 @@ test("small links use ink text with accent reserved for non-text cues", () => {
   expect(stylesheet).toMatch(/header a\.active::after\s*\{[^}]*background:var\(--accent\)/);
 });
 
-test("base table cells do not claim numeric typography before Task 3", () => {
+test("session data cells opt into mono tabular typography without styling every table cell", () => {
   const stylesheet = extractStylesheet();
   expect(stylesheet).not.toMatch(/\btd\s*\{[^}]*font-variant-numeric/);
-  expect(stylesheet).toMatch(/code\s*\{[^}]*font-variant-numeric:tabular-nums/);
+  expect(stylesheet).toMatch(
+    /\.session-data\s*\{[^}]*font-family:var\(--font-mono\)[^}]*font-variant-numeric:tabular-nums/,
+  );
+  expect(stylesheet).toMatch(
+    /\.harness-chip\s*\{[^}]*border-color:var\(--accent\)[^}]*background:var\(--accent-soft\)/,
+  );
 });
 
 test("select uses the contrast-safe locked boundary token", () => {
@@ -443,6 +465,57 @@ test("session tables preserve row semantics and expose real escaped links", asyn
     'href="#/session/session%2F%22&#39;%3Cunsafe%3E"',
   );
   expect(harness.app.innerHTML).not.toContain("<unsafe>");
+});
+
+test("sessions view renders real summary aggregates before the detail table", async () => {
+  const sessions = [
+    summary({ id: "first", costUsd: 0.02, denialCount: 2 }),
+    summary({ id: "second", costUsd: null, denialCount: 0 }),
+    summary({ id: "third", costUsd: 0.03, denialCount: 1 }),
+  ];
+  const harness = createPageHarness((url) => {
+    if (url === "/api/sessions") return sessions;
+    throw new Error(`unexpected request: ${url}`);
+  });
+
+  await harness.route("#/");
+
+  const html = harness.app.innerHTML;
+  expect(html).toContain('<div class="stats" aria-label="Session summary">');
+  expect(html).toContain(
+    '<dt class="stat-label">Sessions</dt><dd class="stat-value">3</dd>',
+  );
+  expect(html).toContain(
+    '<dt class="stat-label">Cost</dt><dd class="stat-value">$0.05</dd>',
+  );
+  expect(html).toContain(
+    '<dl class="stat stat-deny"><dt class="stat-label">Denials</dt><dd class="stat-value">3</dd></dl>',
+  );
+  expect(html.indexOf('class="stats"')).toBeLessThan(html.indexOf('class="table-wrap"'));
+  expect(harness.calls).toEqual(["/api/sessions"]);
+});
+
+test("sessions summary keeps entirely unreported cost explicit", async () => {
+  const harness = createPageHarness((url) => {
+    if (url === "/api/sessions") {
+      return [
+        summary({ id: "first", costUsd: null }),
+        summary({ id: "second", costUsd: null }),
+      ];
+    }
+    throw new Error(`unexpected request: ${url}`);
+  });
+
+  await harness.route("#/");
+
+  const summaryHtml = harness.app.innerHTML.match(
+    /<div class="stats"[^>]*>([\s\S]*?)<\/div>/,
+  )?.[1];
+  expect(summaryHtml).toBeDefined();
+  expect(summaryHtml).toContain(
+    '<dt class="stat-label">Cost</dt><dd class="stat-value"><span class="muted">—</span></dd>',
+  );
+  expect(summaryHtml).not.toContain("$0.00");
 });
 
 test("duplicate harness session links have distinct safe accessible names", async () => {
