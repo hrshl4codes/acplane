@@ -242,6 +242,11 @@ test("small links use ink text with accent reserved for non-text cues", () => {
 
 test("links and selects provide explicit tokenized interaction states", () => {
   const stylesheet = extractStylesheet();
+  const sessionHover = stylesheet.match(/\.session-link:hover\s*\{([^}]*)\}/)?.[1] ?? "";
+  const sessionActive = stylesheet.match(/\.session-link:active\s*\{([^}]*)\}/)?.[1] ?? "";
+  const headerActive = stylesheet.match(/header a:active\s*\{([^}]*)\}/)?.[1] ?? "";
+  const selectHover = stylesheet.match(/select:hover\s*\{([^}]*)\}/)?.[1] ?? "";
+  const selectActive = stylesheet.match(/select:active\s*\{([^}]*)\}/)?.[1] ?? "";
 
   expect(stylesheet).toMatch(/header a\s*\{[^}]*line-height:1/);
   expect(stylesheet).toMatch(
@@ -250,21 +255,15 @@ test("links and selects provide explicit tokenized interaction states", () => {
   expect(stylesheet).toMatch(
     /\.session-link\s*\{[^}]*text-underline-offset:2px/,
   );
-  expect(stylesheet).toMatch(
-    /\.session-link:hover\s*\{[^}]*color:var\(--ink\)[^}]*text-decoration-color:var\(--accent\)/,
-  );
-  expect(stylesheet).toMatch(
-    /\.session-link:active\s*\{[^}]*color:var\(--ink\)[^}]*text-decoration-color:var\(--accent\)/,
-  );
+  expect(sessionHover).toContain("text-decoration-thickness:2px");
+  expect(sessionHover).not.toMatch(/(?:color|opacity|transform|background|border)\s*:/);
+  expect(sessionActive).toContain("color:var(--muted)");
+  expect(headerActive).toContain("color:var(--muted)");
   expect(stylesheet).toMatch(
     /select\s*\{[^}]*outline:2px solid transparent[^}]*outline-offset:1px/,
   );
-  expect(stylesheet).toMatch(
-    /select:hover\s*\{[^}]*border-color:var\(--ink\)[^}]*background:var\(--paper-2\)/,
-  );
-  expect(stylesheet).toMatch(
-    /select:active\s*\{[^}]*border-color:var\(--ink\)[^}]*background:var\(--paper-2\)/,
-  );
+  expect(selectHover).toBe(" background:var(--paper-2); ");
+  expect(selectActive).toBe(" border-color:var(--ink); ");
   expect(stylesheet).toMatch(
     /select:focus-visible\s*\{[^}]*outline:2px solid var\(--focus\)[^}]*outline-offset:1px/,
   );

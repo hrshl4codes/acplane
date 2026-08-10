@@ -76,11 +76,11 @@ export const DASHBOARD_HTML = String.raw`<!doctype html>
   header a.active::after { position:absolute; right:0; bottom:0; left:0; height:2px; background:var(--accent); content:""; }
   @media (hover:hover) and (pointer:fine) {
     header a:hover { color:var(--ink); text-decoration:underline; text-decoration-color:var(--accent); text-decoration-thickness:2px; text-underline-offset:2px; }
-    .session-link:hover { color:var(--ink); text-decoration-color:var(--accent); }
-    select:hover { border-color:var(--ink); background:var(--paper-2); }
+    .session-link:hover { text-decoration-thickness:2px; }
+    select:hover { background:var(--paper-2); }
     .session-row:hover { transform:translateY(-1px); }
   }
-  header a:active { color:var(--ink); }
+  header a:active { color:var(--muted); text-decoration:none; }
   :focus-visible { outline:2px solid var(--focus); outline-offset:3px; }
   [data-route-heading]:focus { outline:none; }
   main { width:100%; min-width:0; max-width:96rem; margin:0 auto; padding:var(--space-8); }
@@ -99,7 +99,7 @@ export const DASHBOARD_HTML = String.raw`<!doctype html>
   .stat-deny .stat-value { color:var(--deny); }
   .session-data { font-family:var(--font-mono); font-variant-numeric:tabular-nums; }
   .session-link { color:var(--ink); text-decoration:underline; text-decoration-color:var(--accent); text-decoration-thickness:1px; text-underline-offset:2px; white-space:nowrap; }
-  .session-link:active { color:var(--ink); text-decoration-color:var(--accent); }
+  .session-link:active { color:var(--muted); text-decoration-thickness:1px; }
   .pill { display:inline-block; max-width:100%; padding:var(--space-1) var(--space-2); overflow-wrap:anywhere; border:1px solid var(--line); border-radius:var(--radius-pill); background:var(--paper-2); color:var(--ink); font-family:var(--font-mono); font-size:var(--text-sm); }
   .harness-chip { border-color:var(--accent); background:var(--accent-soft); }
   .badge { display:inline-block; padding:var(--space-1) var(--space-2); border:1px solid var(--line); border-radius:var(--radius); background:var(--paper); color:var(--ink); font-family:var(--font-mono); font-size:var(--text-xs); }
@@ -136,7 +136,7 @@ export const DASHBOARD_HTML = String.raw`<!doctype html>
   .est { color:var(--muted); font-size:var(--text-xs); }
   label { display:inline-flex; align-items:center; gap:var(--space-2); }
   select { max-width:min(34vw,320px); min-height:44px; padding:var(--space-2) var(--space-3); border:1px solid var(--muted); border-radius:var(--radius); outline:2px solid transparent; outline-offset:1px; background:var(--paper); color:var(--ink); font-family:var(--font-ui); font-size:var(--text-sm); line-height:1.5; }
-  select:active { border-color:var(--ink); background:var(--paper-2); }
+  select:active { border-color:var(--ink); }
   select:focus-visible { outline:2px solid var(--focus); outline-offset:1px; border-color:var(--ink); }
   select:disabled { color:var(--muted); cursor:not-allowed; opacity:.55; }
   @keyframes initial-load { from { opacity:0; } to { opacity:1; } }
