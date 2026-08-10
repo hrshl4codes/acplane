@@ -284,12 +284,62 @@ test("permission rows use locked severity surfaces and readable metadata", () =>
   expect(stylesheet).toMatch(/\.perm-tool\s*\{[^}]*font-family:var\(--font-mono\)/);
 });
 
-test("page contains local table scrolling and a stacked mobile comparison", () => {
+test("motion is limited to the approved load, route, and row-hover primitives", () => {
+  const stylesheet = extractStylesheet();
+
+  expect(stylesheet).toMatch(
+    /body\s*\{[^}]*animation:initial-load var\(--dur-slow\) var\(--ease-out\) both/,
+  );
+  expect(stylesheet).toMatch(
+    /#app\s*>\s*\*\s*\{[^}]*animation:route-enter var\(--dur\) var\(--ease-out\) both/,
+  );
+  expect(stylesheet).toMatch(
+    /\.session-row\s*\{[^}]*transition:transform var\(--dur-fast\) var\(--ease-out\)/,
+  );
+  expect(stylesheet).toMatch(
+    /@media\s*\(hover:hover\)\s*and\s*\(pointer:fine\)[\s\S]*?\.session-row:hover\s*\{[^}]*transform:translateY\(-1px\)/,
+  );
+  expect(stylesheet.match(/@keyframes\s+/g)).toHaveLength(2);
+  expect(stylesheet.match(/\banimation:/g)).toHaveLength(3);
+  expect(stylesheet.match(/\btransition:/g)).toHaveLength(2);
+  expect(stylesheet).not.toMatch(/\b(?:animation|transition):[^;]*(?:width|height|margin|padding|top|left|right|bottom)/);
+  expect(stylesheet).not.toMatch(/\banimation:[^;]*(?:infinite|linear)/);
+});
+
+test("reduced motion removes the spatial hover and disables decorative fades", () => {
+  const stylesheet = extractStylesheet();
+
+  expect(stylesheet).toMatch(
+    /@media\s*\(prefers-reduced-motion:reduce\)[\s\S]*?body,#app\s*>\s*\*\s*\{[^}]*animation:none/,
+  );
+  expect(stylesheet).toMatch(
+    /@media\s*\(prefers-reduced-motion:reduce\)[\s\S]*?\.session-row,\.session-row:hover\s*\{[^}]*transform:none[^}]*transition:none/,
+  );
+});
+
+test("responsive rules keep navigation, data, and controls usable through 768px", () => {
+  const stylesheet = extractStylesheet();
+
   expect(DASHBOARD_HTML).toContain('class="table-wrap"');
-  expect(DASHBOARD_HTML).toMatch(/\.table-wrap\s*\{[^}]*overflow-x:\s*auto/);
-  expect(DASHBOARD_HTML).toMatch(/@media\s*\(max-width:\s*760px\)[\s\S]*?\.cols\s*\{[^}]*grid-template-columns:\s*1fr/);
-  expect(DASHBOARD_HTML).toMatch(/html,\s*body\s*\{[^}]*overflow-x:\s*clip/);
-  expect(DASHBOARD_HTML).toMatch(/:focus-visible/);
+  expect(stylesheet.match(/overflow-x:auto/g)).toHaveLength(1);
+  expect(stylesheet).toMatch(/\.table-wrap\s*\{[^}]*overflow-x:auto/);
+  expect(stylesheet).toMatch(/html,body\s*\{[^}]*overflow-x:clip/);
+  expect(stylesheet).not.toContain("100vw");
+  expect(stylesheet).toMatch(/header nav\s*\{[^}]*flex-wrap:nowrap/);
+  expect(stylesheet).toMatch(/\.session-link\s*\{[^}]*white-space:nowrap/);
+  expect(stylesheet).toMatch(
+    /@media\s*\(max-width:48rem\)[\s\S]*?\.cols\s*\{[^}]*grid-template-columns:minmax\(0,1fr\)/,
+  );
+  expect(stylesheet).toMatch(
+    /@media\s*\(max-width:48rem\)[\s\S]*?\.compare-controls\s*\{[^}]*display:grid[^}]*grid-template-columns:minmax\(0,1fr\)/,
+  );
+  expect(stylesheet).toMatch(
+    /@media\s*\(max-width:48rem\)[\s\S]*?select\s*\{[^}]*width:100%[^}]*max-width:100%[^}]*min-width:0/,
+  );
+  expect(stylesheet).toMatch(
+    /@media\s*\(max-width:48rem\)[\s\S]*?\.stat\s*\{[^}]*padding:var\(--space-3\)/,
+  );
+  expect(stylesheet).toMatch(/\.stat-value\s*\{[^}]*overflow-wrap:anywhere/);
 });
 
 test("programmatic route-heading focus is visually quiet without removing interactive rings", () => {
@@ -698,7 +748,7 @@ test("lineage counts and comparison panels use only the locked semantic tokens",
     /\.cols::before\s*\{[^}]*position:absolute[^}]*background:var\(--line\)/,
   );
   expect(stylesheet).toMatch(
-    /@media\s*\(max-width:\s*760px\)[\s\S]*?\.cols::before\s*\{[^}]*content:none/,
+    /@media\s*\(max-width:48rem\)[\s\S]*?\.cols::before\s*\{[^}]*content:none/,
   );
   expect(stylesheet).toMatch(
     /\.compare-panel-id\s*\{[^}]*font-family:var\(--font-mono\)/,
