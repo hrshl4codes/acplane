@@ -28,4 +28,37 @@ describe("Acplane landing page", () => {
       cleanUrls: true,
     });
   });
+
+  test("maps the complete ACP traffic, permission, and telemetry paths", () => {
+    const html = read("site/index.html");
+    expect(html).toContain('<svg class="system-map map--desktop"');
+    expect(html).toContain('role="img" aria-labelledby="map-title map-desc"');
+    expect(html).toContain('<title id="map-title">How Acplane handles an ACP session</title>');
+    expect(html).toContain('<desc id="map-desc">');
+    for (const node of [
+      "ACP editor",
+      "acplane",
+      "Agent harness",
+      "JSONL flight log",
+      "SQLite dashboard",
+    ]) {
+      expect(html).toContain(node);
+    }
+    for (const decision of ["allow", "deny", "escalate"]) {
+      expect(html).toContain(`>${decision}<`);
+    }
+    expect(html).toContain('class="system-map-mobile map--mobile"');
+  });
+
+  test("limits quantitative claims to implementation facts", () => {
+    const html = read("site/index.html");
+    expect(html).toMatch(/<strong>5<\/strong>\s*indexed flows/);
+    expect(html).toMatch(/<strong>3<\/strong>\s*policy inputs/);
+    expect(html).toMatch(/<strong>3<\/strong>\s*outcomes/);
+    expect(html).toContain("session/request_permission");
+    expect(html).toContain("allow, deny, or escalate");
+    expect(html).toContain("outside the model context");
+    expect(html).toContain("Recorder failures never block the session");
+    expect(html).not.toMatch(/trusted by|customers|faster|10×|testimonial/i);
+  });
 });

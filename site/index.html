@@ -15,21 +15,194 @@
     <a class="github-link" href="https://github.com/hrshl4codes/acplane">View on GitHub ↗</a>
   </header>
   <main id="main-content">
-    <section id="top" aria-labelledby="hero-title">
-      <h1 id="hero-title">See what agents actually do.</h1>
-      <p>Acplane records and governs coding-agent traffic at the Agent Client Protocol boundary.</p>
-      <div id="map"></div>
+    <section class="hero" id="top" aria-labelledby="hero-title">
+      <div class="hero-copy">
+        <h1 id="hero-title">See what agents actually do.</h1>
+        <p>Acplane sits between an ACP editor and agent harness. It preserves non-permission message payloads, applies policy to permission requests, and records the exchange outside the model context.</p>
+      </div>
+
+      <div class="map-frame" id="map">
+        <svg class="system-map map--desktop" viewBox="0 0 1400 720" role="img" aria-labelledby="map-title map-desc">
+          <title id="map-title">How Acplane handles an ACP session</title>
+          <desc id="map-desc">An ACP editor exchanges traffic with an agent harness through Acplane. Acplane handles permission requests by allowing, denying, or escalating them to a human, while a separate telemetry path writes a redacted JSONL flight log to a SQLite dashboard.</desc>
+          <defs>
+            <marker id="arrow-traffic" markerWidth="10" markerHeight="10" refX="8" refY="3" orient="auto" markerUnits="strokeWidth">
+              <path d="M0,0 L0,6 L9,3 z" class="arrow-fill"></path>
+            </marker>
+          </defs>
+
+          <g class="map-lines" aria-hidden="true">
+            <path class="map-path traffic-path" d="M300 165 H545" marker-end="url(#arrow-traffic)"></path>
+            <path class="map-path traffic-path" d="M855 165 H1100" marker-end="url(#arrow-traffic)"></path>
+            <path class="traffic-trace" d="M300 153 H1100"></path>
+            <path class="map-path permission-path" d="M700 225 V315"></path>
+            <path class="map-path allow-path" d="M700 390 L455 470"></path>
+            <path class="map-path deny-path" d="M700 390 V470"></path>
+            <path class="map-path escalate-path" d="M700 390 L945 470"></path>
+            <path class="map-path telemetry-path" d="M620 225 L350 560"></path>
+            <path class="map-path telemetry-path" d="M475 610 H835"></path>
+          </g>
+
+          <g class="map-node map-node--editor" transform="translate(40 105)">
+            <rect width="260" height="120" rx="8"></rect>
+            <text class="node-kind" x="24" y="36">ACP CLIENT</text>
+            <text class="node-title" x="24" y="78">ACP editor</text>
+            <text class="node-note" x="24" y="102">Zed or another client</text>
+          </g>
+
+          <g class="map-node map-node--acplane" transform="translate(545 105)">
+            <rect width="310" height="120" rx="8"></rect>
+            <text class="node-kind" x="24" y="36">CONTROL BOUNDARY</text>
+            <text class="node-title" x="24" y="78">acplane</text>
+            <text class="node-note" x="24" y="102">proxy · policy · recorder</text>
+          </g>
+
+          <g class="map-node map-node--harness" transform="translate(1100 105)">
+            <rect width="260" height="120" rx="8"></rect>
+            <text class="node-kind" x="24" y="36">ACP HARNESS</text>
+            <text class="node-title" x="24" y="78">Agent harness</text>
+            <text class="node-note" x="24" y="102">Claude Code or Codex</text>
+          </g>
+
+          <g class="permission-gate" transform="translate(545 315)">
+            <rect width="310" height="75" rx="8"></rect>
+            <text class="node-kind" x="24" y="30">SPECIAL-CASED TRAFFIC</text>
+            <text class="gate-title" x="24" y="56">session/request_permission</text>
+          </g>
+
+          <g class="decision decision--allow" transform="translate(335 470)">
+            <rect width="240" height="58" rx="29"></rect>
+            <text x="120" y="37" text-anchor="middle">allow</text>
+          </g>
+          <g class="decision decision--deny" transform="translate(580 470)">
+            <rect width="240" height="58" rx="29"></rect>
+            <text x="120" y="37" text-anchor="middle">deny</text>
+          </g>
+          <g class="decision decision--escalate" transform="translate(825 470)">
+            <rect width="240" height="58" rx="29"></rect>
+            <text x="120" y="37" text-anchor="middle">escalate</text>
+          </g>
+          <text class="human-note" x="945" y="557" text-anchor="middle">to a human in the editor</text>
+
+          <g class="map-node map-node--log" transform="translate(215 560)">
+            <rect width="260" height="100" rx="8"></rect>
+            <text class="node-kind" x="24" y="34">OUT-OF-BAND</text>
+            <text class="node-title" x="24" y="70">JSONL flight log</text>
+          </g>
+
+          <g class="map-node map-node--dashboard" transform="translate(835 560)">
+            <rect width="350" height="100" rx="8"></rect>
+            <text class="node-kind" x="24" y="34">READBACK</text>
+            <text class="node-title" x="24" y="70">SQLite dashboard</text>
+          </g>
+        </svg>
+
+        <div class="system-map-mobile map--mobile" role="img" aria-label="ACP editor traffic passes through Acplane to an agent harness. Permission requests are allowed, denied, or escalated to a human. Acplane also records a redacted JSONL flight log for the SQLite dashboard.">
+          <div class="mobile-node"><span>ACP client</span><strong>ACP editor</strong></div>
+          <span class="mobile-connector" aria-hidden="true">↓</span>
+          <div class="mobile-node mobile-node--primary"><span>Control boundary</span><strong>acplane</strong></div>
+          <div class="mobile-split">
+            <div>
+              <span class="mobile-connector" aria-hidden="true">↓</span>
+              <p class="mobile-label">permission request</p>
+              <div class="mobile-decisions"><span class="allow">allow</span><span class="deny">deny</span><span class="escalate">escalate</span></div>
+            </div>
+            <div>
+              <span class="mobile-connector" aria-hidden="true">↓</span>
+              <div class="mobile-node"><span>Out-of-band</span><strong>JSONL flight log</strong></div>
+              <span class="mobile-connector" aria-hidden="true">↓</span>
+              <div class="mobile-node"><span>Readback</span><strong>SQLite dashboard</strong></div>
+            </div>
+          </div>
+          <span class="mobile-connector" aria-hidden="true">↓</span>
+          <div class="mobile-node"><span>ACP harness</span><strong>Agent harness</strong></div>
+        </div>
+
+        <div class="map-legend" aria-label="Map legend">
+          <span><i class="legend-traffic"></i>Forwarded traffic</span>
+          <span><i class="legend-policy"></i>Policy decision</span>
+          <span><i class="legend-record"></i>Recorded telemetry</span>
+        </div>
+      </div>
+
+      <div class="fact-strip" aria-label="Implementation facts">
+        <p><strong>5</strong> indexed flows</p>
+        <p><strong>3</strong> policy inputs</p>
+        <p><strong>3</strong> outcomes</p>
+      </div>
     </section>
-    <section id="traffic"></section>
-    <section id="policy"></section>
-    <section id="record"></section>
-    <section id="dashboard"></section>
-    <section id="run"></section>
-    <section id="failure"></section>
+
+    <section class="field-note" id="traffic" aria-labelledby="traffic-title">
+      <div class="field-note-heading">
+        <p class="field-key">Traffic</p>
+        <h2 id="traffic-title">The unchanged path</h2>
+      </div>
+      <div class="field-note-body">
+        <p>Acplane preserves the JSON payload of every non-permission ACP message between the editor and harness. The recorder observes a copy; it does not add telemetry to the model prompt or context.</p>
+        <p class="protocol-line"><code>editor → acplane → harness</code></p>
+      </div>
+    </section>
+
+    <section class="field-note" id="policy" aria-labelledby="policy-title">
+      <div class="field-note-heading">
+        <p class="field-key">Governance</p>
+        <h2 id="policy-title">The controlled branch</h2>
+      </div>
+      <div class="field-note-body">
+        <p>Acplane special-cases one live method: <code>session/request_permission</code>. First-match rules inspect tool kind, path globs, and command globs, then allow, deny, or escalate the request.</p>
+        <p>Allow and deny are answered locally. Escalate sends the request to a human in the editor. The indexed event records who decided and which rule matched.</p>
+      </div>
+    </section>
+
+    <section class="field-note" id="record" aria-labelledby="record-title">
+      <div class="field-note-heading">
+        <p class="field-key">Record</p>
+        <h2 id="record-title">The flight log</h2>
+      </div>
+      <div class="field-note-body">
+        <p>Every emitted ACP message is timestamped and written to a JSONL file outside agent-owned state. High-confidence Anthropic, OpenAI, GitHub, AWS, and bearer credentials are redacted at rest.</p>
+        <p>Forwarded traffic is not rewritten by the redactor. The durable record stays outside the model context.</p>
+      </div>
+    </section>
+
+    <section class="field-note" id="dashboard" aria-labelledby="dashboard-title">
+      <div class="field-note-heading">
+        <p class="field-key">Readback</p>
+        <h2 id="dashboard-title">The session after the session</h2>
+      </div>
+      <div class="field-note-body">
+        <p>The indexer turns five protocol flows into sessions, turns, tool calls, file touches, usage samples, and permission events. The local dashboard exposes timelines, cross-harness comparison, and file lineage.</p>
+      </div>
+    </section>
+
+    <section class="field-note" id="run" aria-labelledby="run-title">
+      <div class="field-note-heading">
+        <p class="field-key">Local first</p>
+        <h2 id="run-title">Run it where the agents run</h2>
+      </div>
+      <div class="field-note-body">
+        <p>Point an ACP-compatible editor at Acplane, select a configured harness, then index the resulting session log.</p>
+        <pre aria-label="Acplane setup commands"><code>npm install
+npm run build
+node bin/acplane.mjs index
+node bin/acplane.mjs ui</code></pre>
+      </div>
+    </section>
+
+    <section class="field-note field-note--failure" id="failure" aria-labelledby="failure-title">
+      <div class="field-note-heading">
+        <p class="field-key">Failure mode</p>
+        <h2 id="failure-title">Observation fails open</h2>
+      </div>
+      <div class="field-note-body">
+        <p>Recorder failures never block the session. Acplane reports the dropped telemetry and keeps forwarding the underlying traffic.</p>
+      </div>
+    </section>
   </main>
-  <footer>
-    <p>Inspect the boundary, then inspect the code.</p>
+  <footer class="site-footer">
+    <p class="footer-statement">Inspect the boundary, then inspect the code.</p>
     <a href="https://github.com/hrshl4codes/acplane">View on GitHub</a>
+    <p class="footer-meta">Apache-2.0 · TypeScript · Node.js · SQLite · ACP</p>
   </footer>
 </body>
 </html>
