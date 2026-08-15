@@ -74,6 +74,7 @@ describe("Acplane landing page", () => {
       "--color-deny",
       "--color-warn",
       "--font-ui",
+      "--font-display",
       "--font-mono",
       "--space-1",
       "--ease-out",
@@ -83,6 +84,7 @@ describe("Acplane landing page", () => {
     expect(css).not.toMatch(/oklch\(|#[0-9a-f]{3,8}\b|rgba?\(|gradient\(/i);
     expect(css).not.toMatch(/font-style\s*:\s*italic/i);
     expect(css).not.toContain("100vw");
+    expect(css).toMatch(/h1,\s*h2\s*\{[^}]*font-family:\s*var\(--font-display\);/s);
   });
 
   test("is mobile-first, overflow-safe, and reduced-motion safe", () => {
@@ -108,6 +110,8 @@ describe("Acplane landing page", () => {
     expect(css).toContain("@media (hover: hover) and (pointer: fine)");
     expect(css).toContain(":focus-visible");
     expect(css).toContain(":active");
+    expect(css).toContain('a[aria-disabled="true"]');
+    expect(css).toContain("cursor: not-allowed;");
     expect(css).toMatch(/min-(?:block-size|height):\s*44px/);
   });
 
@@ -120,5 +124,20 @@ describe("Acplane landing page", () => {
     expect(html).toContain("Sanitized sample session data.");
     expect(html).not.toMatch(/<script\b/i);
     expect(html).not.toMatch(/(?:src|href)="https:\/\/(?!github\.com)/i);
+  });
+
+  test("keeps the wide-screen system map in the opening composition without browser noise", () => {
+    const html = read("site/index.html");
+    const css = read("site/styles.css");
+    const desktop = css.slice(css.indexOf("@media (min-width: 60rem)"));
+
+    expect(html).toContain('<link rel="icon" href="data:,">');
+    expect(desktop).toMatch(
+      /\.hero\s*\{[^}]*display:\s*grid;[^}]*grid-template-columns:\s*minmax\(0,\s*0\.7fr\)\s+minmax\(0,\s*1\.3fr\);/s,
+    );
+    expect(desktop).toMatch(/\.hero-copy\s*\{[^}]*margin-block-end:\s*0;/s);
+    expect(desktop).toMatch(/\.fact-strip\s*\{[^}]*grid-column:\s*1\s*\/\s*-1;/s);
+    expect(css).toMatch(/\.hero\s*\{[^}]*padding-block:\s*var\(--space-8\)\s+var\(--space-12\);/s);
+    expect(desktop).toMatch(/\.hero\s*\{[^}]*padding-block:\s*var\(--space-8\)\s+var\(--space-12\);/s);
   });
 });

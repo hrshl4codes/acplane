@@ -1,6 +1,8 @@
-/* Hallmark · pre-emit critique: P5 H5 E5 S5 R5 V5
- * macrostructure: Map / Diagram · theme: locked cool sky-cyan instrumentation
+/* Hallmark · pre-emit critique: P5 H5 E5 S5 R5 V5 · macrostructure: Map / Diagram
+ * genre: modern-minimal · tone: technical · theme: locked cool sky-cyan instrumentation
  * nav: N9 edge-aligned minimal · footer: Ft5 statement · enrichment: Tier B inline SVG
+ * contrast: pass (40–41) · slop: pass (42–45) · honest: pass (46) · chrome: pass (47)
+ * tokens: pass (48) · responsive: pass (49) · mobile: pass (34, 49, 50–57) · icons: pass (30)
  */
 :root {
   color-scheme: light;
@@ -22,7 +24,8 @@
   --color-warn-soft: oklch(95% 0.04 75);
 
   --font-ui: ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
-  --font-mono: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+  --font-display: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+  --font-mono: var(--font-display);
 
   --text-xs: 0.6875rem;
   --text-sm: 0.8125rem;
