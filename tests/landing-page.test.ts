@@ -110,4 +110,15 @@ describe("Acplane landing page", () => {
     expect(css).toContain(":active");
     expect(css).toMatch(/min-(?:block-size|height):\s*44px/);
   });
+
+  test("ships a local dashboard capture with honest fallback text", () => {
+    expect(existsSync(resolve(root, "site/assets/dashboard.png"))).toBe(true);
+    const html = read("site/index.html");
+    expect(html).toMatch(
+      /<img[^>]+src="\.\/assets\/dashboard\.png"[^>]+width="1536"[^>]+height="1024"[^>]+loading="lazy"[^>]+alt="[^"]+"/s,
+    );
+    expect(html).toContain("Sanitized sample session data.");
+    expect(html).not.toMatch(/<script\b/i);
+    expect(html).not.toMatch(/(?:src|href)="https:\/\/(?!github\.com)/i);
+  });
 });
