@@ -61,4 +61,53 @@ describe("Acplane landing page", () => {
     expect(html).toContain("Recorder failures never block the session");
     expect(html).not.toMatch(/trusted by|customers|faster|10×|testimonial/i);
   });
+
+  test("uses the locked token system without improvised visual effects", () => {
+    const tokens = read("site/tokens.css");
+    const css = read("site/styles.css");
+    expect(tokens.trimStart()).toMatch(/^\/\* Hallmark · pre-emit critique:/);
+    for (const token of [
+      "--color-paper",
+      "--color-ink",
+      "--color-accent",
+      "--color-ok",
+      "--color-deny",
+      "--color-warn",
+      "--font-ui",
+      "--font-mono",
+      "--space-1",
+      "--ease-out",
+    ]) {
+      expect(tokens).toContain(token);
+    }
+    expect(css).not.toMatch(/oklch\(|#[0-9a-f]{3,8}\b|rgba?\(|gradient\(/i);
+    expect(css).not.toMatch(/font-style\s*:\s*italic/i);
+    expect(css).not.toContain("100vw");
+  });
+
+  test("is mobile-first, overflow-safe, and reduced-motion safe", () => {
+    const css = read("site/styles.css");
+    expect(css).toMatch(/html,\s*body[^{]*\{[^}]*overflow-x:\s*clip/s);
+    expect(css).toContain(".map--desktop {\n  display: none;");
+    expect(css).toContain("@media (min-width: 60rem)");
+    expect(css).toContain("@media (prefers-reduced-motion: reduce)");
+    expect(css.match(/@keyframes\s+/g)).toHaveLength(2);
+    expect(css).toContain("@keyframes node-ink");
+    expect(css).toContain("@keyframes traffic-trace");
+  });
+
+  test("does not override SVG node positioning during motion", () => {
+    const css = read("site/styles.css");
+    const nodeInk = css.slice(css.indexOf("@keyframes node-ink"), css.indexOf("@keyframes traffic-trace"));
+    expect(nodeInk).not.toContain("transform:");
+    expect(css).not.toMatch(/\.map-node,\s*\.permission-gate,\s*\.traffic-trace\s*\{[^}]*transform:\s*none/s);
+  });
+
+  test("gives links visible pointer, keyboard, and pressed states", () => {
+    const css = read("site/styles.css");
+    expect(css).toContain("@media (hover: hover) and (pointer: fine)");
+    expect(css).toContain(":focus-visible");
+    expect(css).toContain(":active");
+    expect(css).toMatch(/min-(?:block-size|height):\s*44px/);
+  });
 });
