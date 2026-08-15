@@ -1,0 +1,52 @@
+* {
+  box-sizing: border-box;
+}
+
+body {
+  margin: 0;
+  background: var(--color-paper);
+  color: var(--color-ink);
+  font-family: var(--font-ui);
+  line-height: 1.5;
+}
+
+a {
+  color: var(--color-accent);
+}
+
+.skip-link {
+  position: absolute;
+  inset-block-start: 0;
+  inset-inline-start: var(--space-page);
+}
+
+.masthead,
+main,
+footer {
+  padding: var(--space-page);
+}
+
+.masthead {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.wordmark {
+  color: var(--color-accent);
+  font-size: 1.5rem;
+  font-weight: 700;
+  text-decoration: none;
+}
+
+main,
+footer {
+  max-width: 96rem;
+  margin-inline: auto;
+}
+
+h1 {
+  max-width: 12ch;
+  font-size: clamp(2.5rem, 8vw, 7rem);
+  line-height: 0.95;
+}
