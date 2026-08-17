@@ -29,120 +29,76 @@
     <section class="hero" id="top" aria-labelledby="hero-title">
       <div class="hero-main">
         <div class="hero-copy">
-          <h1 id="hero-title">See what agents <span>actually</span> do.</h1>
-          <p>Acplane sits between an ACP editor and agent harness. It preserves non-permission message payloads, applies policy to permission requests, and records the exchange outside the model context.</p>
-          <a class="text-link" href="#map">Trace the control path ↓</a>
+          <p class="hero-eyebrow">ACP control plane</p>
+          <h1 id="hero-title">Agents move fast. <span>Keep the boundary visible.</span></h1>
+          <p>Acplane governs permission requests, records ACP traffic outside model context, and gives every session a durable readback.</p>
+          <a class="text-link" href="#map">Explore the signal path ↓</a>
         </div>
 
-        <div class="map-frame" id="map">
-        <svg class="system-map map--desktop" viewBox="0 0 1400 720" role="img" aria-labelledby="map-title map-desc">
-          <title id="map-title">How Acplane handles an ACP session</title>
-          <desc id="map-desc">An ACP editor exchanges traffic with an agent harness through Acplane. Acplane handles permission requests by allowing, denying, or escalating them to a human, while a separate telemetry path writes a redacted JSONL flight log to a SQLite dashboard.</desc>
-          <defs>
-            <marker id="arrow-traffic" markerWidth="10" markerHeight="10" refX="8" refY="3" orient="auto" markerUnits="strokeWidth">
-              <path d="M0,0 L0,6 L9,3 z" class="arrow-fill"></path>
-            </marker>
-          </defs>
+        <div class="signal-chamber" id="map" data-signal-chamber data-active="none" role="group" aria-labelledby="signal-title" aria-describedby="signal-description">
+          <div class="signal-meta">
+            <span id="signal-title">ACP control stack</span>
+            <span>boundary active</span>
+          </div>
+          <p class="sr-only" id="signal-description">ACP traffic moves from the editor through Acplane's proxy, policy, and recorder planes to the agent runtime.</p>
 
-          <g class="map-lines" aria-hidden="true">
-            <path class="map-path traffic-path" d="M300 165 H545" marker-end="url(#arrow-traffic)"></path>
-            <path class="map-path traffic-path" d="M855 165 H1100" marker-end="url(#arrow-traffic)"></path>
-            <path class="traffic-trace" d="M300 153 H1100"></path>
-            <path class="map-path permission-path" d="M700 225 V315"></path>
-            <path class="map-path allow-path" d="M700 390 L455 470"></path>
-            <path class="map-path deny-path" d="M700 390 V470"></path>
-            <path class="map-path escalate-path" d="M700 390 L945 470"></path>
-            <path class="map-path telemetry-path" d="M620 225 L350 560"></path>
-            <path class="map-path telemetry-path" d="M475 610 H835"></path>
-          </g>
+          <div class="signal-endpoint signal-endpoint--editor">
+            <small>Source · ACP client</small>
+            <strong>Editor</strong>
+            <span>Zed / compatible client</span>
+          </div>
+          <span class="signal-rail signal-rail--in" aria-hidden="true"></span>
+          <span class="signal-packet" aria-hidden="true"></span>
 
-          <g class="map-node map-node--editor" transform="translate(40 105)">
-            <rect width="260" height="120" rx="8"></rect>
-            <text class="node-kind" x="24" y="36">ACP CLIENT</text>
-            <text class="node-title" x="24" y="78">ACP editor</text>
-            <text class="node-note" x="24" y="102">Zed or another client</text>
-          </g>
-
-          <g class="map-node map-node--acplane" transform="translate(545 105)">
-            <rect width="310" height="120" rx="8"></rect>
-            <text class="node-kind" x="24" y="36">CONTROL BOUNDARY</text>
-            <text class="node-title" x="24" y="78">acplane</text>
-            <text class="node-note" x="24" y="102">proxy · policy · recorder</text>
-          </g>
-
-          <g class="map-node map-node--harness" transform="translate(1100 105)">
-            <rect width="260" height="120" rx="8"></rect>
-            <text class="node-kind" x="24" y="36">ACP HARNESS</text>
-            <text class="node-title" x="24" y="78">Agent harness</text>
-            <text class="node-note" x="24" y="102">Claude Code or Codex</text>
-          </g>
-
-          <g class="permission-gate" transform="translate(545 315)">
-            <rect width="310" height="75" rx="8"></rect>
-            <text class="node-kind" x="24" y="30">SPECIAL-CASED TRAFFIC</text>
-            <text class="gate-title" x="24" y="56">session/request_permission</text>
-          </g>
-
-          <g class="decision decision--allow" transform="translate(335 470)">
-            <rect width="240" height="58" rx="29"></rect>
-            <text x="120" y="37" text-anchor="middle">allow</text>
-          </g>
-          <g class="decision decision--deny" transform="translate(580 470)">
-            <rect width="240" height="58" rx="29"></rect>
-            <text x="120" y="37" text-anchor="middle">deny</text>
-          </g>
-          <g class="decision decision--escalate" transform="translate(825 470)">
-            <rect width="240" height="58" rx="29"></rect>
-            <text x="120" y="37" text-anchor="middle">escalate</text>
-          </g>
-          <text class="human-note" x="945" y="557" text-anchor="middle">to a human in the editor</text>
-
-          <g class="map-node map-node--log" transform="translate(215 560)">
-            <rect width="260" height="100" rx="8"></rect>
-            <text class="node-kind" x="24" y="34">OUT-OF-BAND</text>
-            <text class="node-title" x="24" y="70">JSONL flight log</text>
-          </g>
-
-          <g class="map-node map-node--dashboard" transform="translate(835 560)">
-            <rect width="350" height="100" rx="8"></rect>
-            <text class="node-kind" x="24" y="34">READBACK</text>
-            <text class="node-title" x="24" y="70">SQLite dashboard</text>
-          </g>
-        </svg>
-
-        <div class="system-map-mobile map--mobile" role="img" aria-label="ACP editor traffic passes through Acplane to an agent harness. Permission requests are allowed, denied, or escalated to a human. Acplane also records a redacted JSONL flight log for the SQLite dashboard.">
-          <div class="mobile-node"><span>ACP client</span><strong>ACP editor</strong></div>
-          <span class="mobile-connector" aria-hidden="true">↓</span>
-          <div class="mobile-node mobile-node--primary"><span>Control boundary</span><strong>acplane</strong></div>
-          <div class="mobile-split">
-            <div>
-              <span class="mobile-connector" aria-hidden="true">↓</span>
-              <p class="mobile-label">permission request</p>
-              <div class="mobile-decisions"><span class="allow">allow</span><span class="deny">deny</span><span class="escalate">escalate</span></div>
-            </div>
-            <div>
-              <span class="mobile-connector" aria-hidden="true">↓</span>
-              <div class="mobile-node"><span>Out-of-band</span><strong>JSONL flight log</strong></div>
-              <span class="mobile-connector" aria-hidden="true">↓</span>
-              <div class="mobile-node"><span>Readback</span><strong>SQLite dashboard</strong></div>
+          <div class="signal-stack-field" data-stack-field>
+            <div class="signal-stack">
+              <button class="signal-plane signal-plane--proxy" type="button" data-plane="proxy" aria-pressed="false" aria-describedby="callout-proxy">Proxy <span>01</span></button>
+              <button class="signal-plane signal-plane--policy" type="button" data-plane="policy" aria-pressed="false" aria-describedby="callout-policy">Policy <span>02</span></button>
+              <button class="signal-plane signal-plane--recorder" type="button" data-plane="recorder" aria-pressed="false" aria-describedby="callout-recorder">Recorder <span>03</span></button>
             </div>
           </div>
-          <span class="mobile-connector" aria-hidden="true">↓</span>
-          <div class="mobile-node"><span>ACP harness</span><strong>Agent harness</strong></div>
-        </div>
 
-          <div class="map-legend" aria-label="Map legend">
-            <span><i class="legend-traffic"></i>Forwarded traffic</span>
-            <span><i class="legend-policy"></i>Policy decision</span>
-            <span><i class="legend-record"></i>Recorded telemetry</span>
+          <svg class="signal-leaders" viewBox="0 0 1000 500" preserveAspectRatio="none" aria-hidden="true">
+            <defs>
+              <marker id="signal-arrow" viewBox="0 0 7 7" refX="6.2" refY="3.5" markerWidth="5.5" markerHeight="5.5" orient="auto">
+                <path d="M0 0 L7 3.5 L0 7 Z"></path>
+              </marker>
+            </defs>
+            <path class="leader leader--proxy" d="M285 386 H390 Q404 386 404 372 V322 Q404 307 419 307 H466" marker-end="url(#signal-arrow)"></path>
+            <path class="leader leader--policy" d="M716 397 H640 Q626 397 626 383 V283 Q626 268 611 268 H551" marker-end="url(#signal-arrow)"></path>
+            <path class="leader leader--recorder" d="M683 111 H626 Q612 111 612 125 V183 Q612 198 597 198 H536" marker-end="url(#signal-arrow)"></path>
+          </svg>
+
+          <aside class="signal-callout signal-callout--proxy" id="callout-proxy" data-callout="proxy">
+            <small>01 · proxy</small>
+            <strong>Preserves the exchange</strong>
+            <p>Forwards non-permission payloads without adding model context.</p>
+          </aside>
+          <aside class="signal-callout signal-callout--policy" id="callout-policy" data-callout="policy">
+            <small>02 · policy</small>
+            <strong>Controls permission requests</strong>
+            <p>Resolves allow, deny, or human escalation.</p>
+          </aside>
+          <aside class="signal-callout signal-callout--recorder" id="callout-recorder" data-callout="recorder">
+            <small>03 · recorder</small>
+            <strong>Creates the flight log</strong>
+            <p>Redacts credentials and writes JSONL out-of-band.</p>
+          </aside>
+
+          <span class="signal-rail signal-rail--out" aria-hidden="true"></span>
+          <div class="signal-endpoint signal-endpoint--runtime">
+            <small>Destination · harness</small>
+            <strong>Agent runtime</strong>
+            <span>Codex / Claude Code</span>
           </div>
+          <span class="signal-hint">Move across the stack to inspect</span>
         </div>
       </div>
 
       <div class="fact-strip" aria-label="Implementation facts">
         <p><strong>5</strong> indexed flows</p>
         <p><strong>3</strong> policy inputs</p>
-        <p><strong>3</strong> outcomes</p>
+        <p><strong>3</strong> decision outcomes</p>
       </div>
     </section>
 

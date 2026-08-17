@@ -13,7 +13,9 @@ describe("Acplane landing page", () => {
 
     const html = read("site/index.html");
     expect(html).toContain("<title>acplane — ACP visibility and policy</title>");
-    expect(html.replace(/<[^>]+>/g, " ").replace(/\s+/g, " ")).toContain("See what agents actually do.");
+    expect(html.replace(/<[^>]+>/g, " ").replace(/\s+/g, " ")).toContain(
+      "Agents move fast. Keep the boundary visible.",
+    );
     expect(html).toContain('href="https://github.com/hrshl4codes/acplane"');
     expect(html.match(/>View on GitHub(?: ↗)?<\/a>/g)?.length).toBe(2);
     expect(html).toContain('<main id="main-content">');
@@ -29,32 +31,53 @@ describe("Acplane landing page", () => {
     });
   });
 
-  test("maps the complete ACP traffic, permission, and telemetry paths", () => {
+  test("renders one Signal Chamber with open endpoints and a three-plane control stack", () => {
     const html = read("site/index.html");
-    expect(html).toContain('<svg class="system-map map--desktop"');
-    expect(html).toContain('role="img" aria-labelledby="map-title map-desc"');
-    expect(html).toContain('<title id="map-title">How Acplane handles an ACP session</title>');
-    expect(html).toContain('<desc id="map-desc">');
-    for (const node of [
-      "ACP editor",
-      "acplane",
-      "Agent harness",
-      "JSONL flight log",
-      "SQLite dashboard",
+    const visible = html.replace(/<[^>]+>/g, " ").replace(/\s+/g, " ");
+
+    expect(visible).toContain("ACP control plane");
+    expect(visible).toContain(
+      "Acplane governs permission requests, records ACP traffic outside model context, and gives every session a durable readback.",
+    );
+    expect(visible).toContain("Explore the signal path ↓");
+    expect(html).toContain('data-signal-chamber');
+    expect(html).toContain('role="group" aria-labelledby="signal-title" aria-describedby="signal-description"');
+    for (const label of [
+      "Source · ACP client",
+      "Editor",
+      "Zed / compatible client",
+      "Destination · harness",
+      "Agent runtime",
+      "Codex / Claude Code",
     ]) {
-      expect(html).toContain(node);
+      expect(visible).toContain(label);
     }
-    for (const decision of ["allow", "deny", "escalate"]) {
-      expect(html).toContain(`>${decision}<`);
-    }
-    expect(html).toContain('class="system-map-mobile map--mobile"');
+    expect(html.match(/data-plane="(?:proxy|policy|recorder)"/g)).toHaveLength(3);
+    expect(html).toMatch(/Proxy\s*<span[^>]*>01<\/span>/);
+    expect(html).toMatch(/Policy\s*<span[^>]*>02<\/span>/);
+    expect(html).toMatch(/Recorder\s*<span[^>]*>03<\/span>/);
+    expect(html).not.toContain('class="system-map map--desktop"');
+    expect(html).not.toContain('class="system-map-mobile map--mobile"');
+  });
+
+  test("routes compact rounded-elbow leaders to the correct stack planes", () => {
+    const html = read("site/index.html");
+
+    expect(html).toContain('class="signal-leaders"');
+    expect(html.match(/class="leader leader--(?:proxy|policy|recorder)"/g)).toHaveLength(3);
+    expect(html.match(/\bQ\s*[-\d.]+\s+[-\d.]+/g)?.length).toBeGreaterThanOrEqual(3);
+    expect(html.match(/marker-end="url\(#signal-arrow\)"/g)).toHaveLength(3);
+    expect(html).toContain("Preserves the exchange");
+    expect(html).toContain("Controls permission requests");
+    expect(html).toContain("Creates the flight log");
+    expect(html).not.toMatch(/rail-socket|ingress-socket|egress-socket/i);
   });
 
   test("limits quantitative claims to implementation facts", () => {
     const html = read("site/index.html");
     expect(html).toMatch(/<strong>5<\/strong>\s*indexed flows/);
     expect(html).toMatch(/<strong>3<\/strong>\s*policy inputs/);
-    expect(html).toMatch(/<strong>3<\/strong>\s*outcomes/);
+    expect(html).toMatch(/<strong>3<\/strong>\s*decision outcomes/);
     expect(html).toContain("session/request_permission");
     expect(html).toContain("allow, deny, or escalate");
     expect(html).toContain("outside the model context");
@@ -91,7 +114,7 @@ describe("Acplane landing page", () => {
     const html = read("site/index.html");
     const tokens = read("site/tokens.css");
 
-    expect(tokens).toContain("macrostructure: Workbench");
+    expect(tokens).toContain("macrostructure: Signal Chamber");
     expect(tokens).toMatch(/--font-display:\s*"Space Grotesk"/);
     expect(tokens).toMatch(/--font-body:\s*"IBM Plex Sans"/);
     expect(tokens).toMatch(/--font-mono:\s*"JetBrains Mono"/);
@@ -117,20 +140,12 @@ describe("Acplane landing page", () => {
     const css = read("site/styles.css");
     expect(css).toMatch(/html,\s*body[^{]*\{[^}]*overflow-x:\s*clip/s);
     expect(css).toMatch(/\.masthead-shell\s*\{[^}]*grid-template-columns:\s*minmax\(0,\s*1fr\)\s+auto;/s);
-    expect(css).toMatch(/\.hero-copy,\s*\.map-frame\s*\{[^}]*min-width:\s*0;/s);
-    expect(css).toContain(".map--desktop {\n  display: none;");
+    expect(css).toMatch(/\.hero-copy,\s*\.signal-chamber\s*\{[^}]*min-width:\s*0;/s);
+    expect(css).toMatch(/\.signal-chamber\s*\{[^}]*min-width:\s*0;/s);
     expect(css).toContain("@media (min-width: 60rem)");
+    expect(css).toContain("@media (max-width: 48rem)");
     expect(css).toContain("@media (prefers-reduced-motion: reduce)");
-    expect(css.match(/@keyframes\s+/g)).toHaveLength(2);
-    expect(css).toContain("@keyframes node-ink");
-    expect(css).toContain("@keyframes traffic-trace");
-  });
-
-  test("does not override SVG node positioning during motion", () => {
-    const css = read("site/styles.css");
-    const nodeInk = css.slice(css.indexOf("@keyframes node-ink"), css.indexOf("@keyframes traffic-trace"));
-    expect(nodeInk).not.toContain("transform:");
-    expect(css).not.toMatch(/\.map-node,\s*\.permission-gate,\s*\.traffic-trace\s*\{[^}]*transform:\s*none/s);
+    expect(css).not.toContain("100vw");
   });
 
   test("gives links visible pointer, keyboard, and pressed states", () => {
@@ -150,12 +165,11 @@ describe("Acplane landing page", () => {
       /<img[^>]+src="\.\/assets\/dashboard\.png"[^>]+width="1536"[^>]+height="1024"[^>]+loading="lazy"[^>]+alt="[^"]+"/s,
     );
     expect(html).toContain("Sanitized sample session data.");
-    expect(html).not.toMatch(/<script\b/i);
     const remoteTargets = [...html.matchAll(/(?:src|href)="(https:\/\/[^\"]+)"/g)].map((match) => match[1]!);
     expect(remoteTargets.every((target) => /^https:\/\/(?:github\.com|fonts\.googleapis\.com|fonts\.gstatic\.com)/.test(target))).toBe(true);
   });
 
-  test("keeps the wide-screen system map in the opening composition without browser noise", () => {
+  test("keeps the wide-screen Signal Chamber in the opening composition without browser noise", () => {
     const html = read("site/index.html");
     const css = read("site/styles.css");
     const desktop = css.slice(css.indexOf("@media (min-width: 60rem)"));
@@ -165,5 +179,7 @@ describe("Acplane landing page", () => {
     expect(desktop).toMatch(/\.hero-copy\s*\{[^}]*margin-block-end:\s*0;/s);
     expect(css).toMatch(/\.hero\s*\{[^}]*padding-block:\s*var\(--space-xl\)\s+var\(--space-2xl\);/s);
     expect(desktop).toMatch(/\.hero-main\s*\{[^}]*gap:\s*var\(--space-2xl\);/s);
+    expect(html).toContain('class="signal-endpoint signal-endpoint--editor"');
+    expect(html).toContain('class="signal-endpoint signal-endpoint--runtime"');
   });
 });
