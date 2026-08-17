@@ -22,6 +22,23 @@ inline `<style>` is the runtime source of truth for these tokens. Do not add
 dependency. Preserve the existing inline script's data, routing, focus, abort,
 escaping, and accessibility behavior when applying this system.
 
+## Standalone marketing-site variant
+
+The separately deployed static site under `site/` may amplify this system for
+brand communication without changing the dashboard runtime contract:
+
+- Macrostructure · Workbench; the protocol map opens the page and the real
+  dashboard capture is the central product proof.
+- Display · Space Grotesk 700 for the wordmark and major headings.
+- Body · IBM Plex Sans 400/600 for prose and navigation.
+- Mono · JetBrains Mono 400/600 for protocol methods, paths, commands, and data.
+- Layout · the same 4 px foundation, expanded to 40/64/96/144 px section steps
+  so marketing rhythm can move between dense technical detail and large proof.
+- Colour · preserve the cool sky-cyan accent and semantic status colours; one
+  stable dark ink band is allowed around the dashboard capture.
+- Assets · only the real local dashboard capture and code-native HTML/CSS/SVG.
+  No remote product imagery, fake browser chrome, or invented proof.
+
 ## Tokens (locked reference)
 
 ```css

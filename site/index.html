@@ -6,23 +6,35 @@
   <meta name="description" content="Acplane records and governs coding-agent traffic at the Agent Client Protocol boundary.">
   <title>acplane — ACP visibility and policy</title>
   <link rel="icon" href="data:,">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:wght@400;600&amp;family=JetBrains+Mono:wght@400;600&amp;family=Space+Grotesk:wght@500;700&amp;display=swap">
   <link rel="stylesheet" href="./tokens.css">
   <link rel="stylesheet" href="./styles.css">
 </head>
 <body>
   <a class="skip-link" href="#main-content">Skip to content</a>
   <header class="masthead">
-    <a class="wordmark" href="#top" aria-label="Acplane home">acplane</a>
-    <a class="github-link" href="https://github.com/hrshl4codes/acplane">View on GitHub ↗</a>
+    <div class="masthead-shell">
+      <a class="wordmark" href="#top" aria-label="Acplane home">acplane</a>
+      <nav class="site-nav" aria-label="Primary navigation">
+        <a href="#map">System</a>
+        <a href="#dashboard">Dashboard</a>
+        <a href="#run">Run</a>
+      </nav>
+      <a class="github-link" href="https://github.com/hrshl4codes/acplane">View on GitHub ↗</a>
+    </div>
   </header>
   <main id="main-content">
     <section class="hero" id="top" aria-labelledby="hero-title">
-      <div class="hero-copy">
-        <h1 id="hero-title">See what agents actually do.</h1>
-        <p>Acplane sits between an ACP editor and agent harness. It preserves non-permission message payloads, applies policy to permission requests, and records the exchange outside the model context.</p>
-      </div>
+      <div class="hero-main">
+        <div class="hero-copy">
+          <h1 id="hero-title">See what agents <span>actually</span> do.</h1>
+          <p>Acplane sits between an ACP editor and agent harness. It preserves non-permission message payloads, applies policy to permission requests, and records the exchange outside the model context.</p>
+          <a class="text-link" href="#map">Trace the control path ↓</a>
+        </div>
 
-      <div class="map-frame" id="map">
+        <div class="map-frame" id="map">
         <svg class="system-map map--desktop" viewBox="0 0 1400 720" role="img" aria-labelledby="map-title map-desc">
           <title id="map-title">How Acplane handles an ACP session</title>
           <desc id="map-desc">An ACP editor exchanges traffic with an agent harness through Acplane. Acplane handles permission requests by allowing, denying, or escalating them to a human, while a separate telemetry path writes a redacted JSONL flight log to a SQLite dashboard.</desc>
@@ -119,10 +131,11 @@
           <div class="mobile-node"><span>ACP harness</span><strong>Agent harness</strong></div>
         </div>
 
-        <div class="map-legend" aria-label="Map legend">
-          <span><i class="legend-traffic"></i>Forwarded traffic</span>
-          <span><i class="legend-policy"></i>Policy decision</span>
-          <span><i class="legend-record"></i>Recorded telemetry</span>
+          <div class="map-legend" aria-label="Map legend">
+            <span><i class="legend-traffic"></i>Forwarded traffic</span>
+            <span><i class="legend-policy"></i>Policy decision</span>
+            <span><i class="legend-record"></i>Recorded telemetry</span>
+          </div>
         </div>
       </div>
 
@@ -133,75 +146,72 @@
       </div>
     </section>
 
-    <section class="field-note" id="traffic" aria-labelledby="traffic-title">
-      <div class="field-note-heading">
-        <h2 id="traffic-title">The unchanged path</h2>
+    <section class="protocol-section" aria-labelledby="protocol-title">
+      <div class="section-intro">
+        <h2 id="protocol-title">One boundary. Three paths.</h2>
+        <p>Most traffic passes straight through. Permission requests take the controlled branch. Every observed exchange can become a durable record.</p>
       </div>
-      <div class="field-note-body">
-        <p>Acplane preserves the JSON payload of every non-permission ACP message between the editor and harness. The recorder observes a copy; it does not add telemetry to the model prompt or context.</p>
-        <p class="protocol-line"><code>editor → acplane → harness</code></p>
+      <div class="protocol-grid">
+        <article id="traffic" aria-labelledby="traffic-title">
+          <p class="path-mark path-mark--solid" aria-hidden="true">→</p>
+          <h3 id="traffic-title">The unchanged path</h3>
+          <p>Acplane preserves the JSON payload of every non-permission ACP message between the editor and harness. The recorder observes a copy; it does not add telemetry to the model prompt or context.</p>
+          <p class="protocol-line"><code>editor → acplane → harness</code></p>
+        </article>
+
+        <article id="policy" aria-labelledby="policy-title">
+          <p class="path-mark path-mark--branch" aria-hidden="true">⇢</p>
+          <h3 id="policy-title">The controlled branch</h3>
+          <p>Acplane special-cases one live method: <code>session/request_permission</code>. First-match rules inspect tool kind, path globs, and command globs, then allow, deny, or escalate the request.</p>
+          <p>Allow and deny are answered locally. Escalate sends the request to a human in the editor. The indexed event records who decided and which rule matched.</p>
+        </article>
+
+        <article id="record" aria-labelledby="record-title">
+          <p class="path-mark path-mark--record" aria-hidden="true">⋯</p>
+          <h3 id="record-title">The flight log</h3>
+          <p>Every emitted ACP message is timestamped and written to a JSONL file outside agent-owned state. High-confidence Anthropic, OpenAI, GitHub, AWS, and bearer credentials are redacted at rest.</p>
+          <p>Forwarded traffic is not rewritten by the redactor. The durable record stays outside the model context.</p>
+        </article>
       </div>
     </section>
 
-    <section class="field-note" id="policy" aria-labelledby="policy-title">
-      <div class="field-note-heading">
-        <h2 id="policy-title">The controlled branch</h2>
-      </div>
-      <div class="field-note-body">
-        <p>Acplane special-cases one live method: <code>session/request_permission</code>. First-match rules inspect tool kind, path globs, and command globs, then allow, deny, or escalate the request.</p>
-        <p>Allow and deny are answered locally. Escalate sends the request to a human in the editor. The indexed event records who decided and which rule matched.</p>
-      </div>
-    </section>
-
-    <section class="field-note" id="record" aria-labelledby="record-title">
-      <div class="field-note-heading">
-        <h2 id="record-title">The flight log</h2>
-      </div>
-      <div class="field-note-body">
-        <p>Every emitted ACP message is timestamped and written to a JSONL file outside agent-owned state. High-confidence Anthropic, OpenAI, GitHub, AWS, and bearer credentials are redacted at rest.</p>
-        <p>Forwarded traffic is not rewritten by the redactor. The durable record stays outside the model context.</p>
-      </div>
-    </section>
-
-    <section class="field-note" id="dashboard" aria-labelledby="dashboard-title">
-      <div class="field-note-heading">
-        <h2 id="dashboard-title">The session after the session</h2>
-      </div>
-      <div class="field-note-body">
+    <section class="product-proof" id="dashboard" aria-labelledby="dashboard-title">
+      <div class="product-proof-copy">
+        <h2 id="dashboard-title">The session after the session.</h2>
         <p>The indexer turns five protocol flows into sessions, turns, tool calls, file touches, usage samples, and permission events. The local dashboard exposes timelines, cross-harness comparison, and file lineage.</p>
-        <figure class="dashboard-proof">
-          <img src="./assets/dashboard.png" width="1536" height="1024" loading="lazy" decoding="async" alt="Acplane session dashboard showing session totals and a table of sanitized Claude and Codex sessions.">
-          <figcaption>Compiled Acplane dashboard. Sanitized sample session data.</figcaption>
-        </figure>
       </div>
+      <figure class="dashboard-proof">
+        <img src="./assets/dashboard.png" width="1536" height="1024" loading="lazy" decoding="async" alt="Acplane session dashboard showing session totals and a table of sanitized Claude and Codex sessions.">
+        <figcaption>Compiled Acplane dashboard. Sanitized sample session data.</figcaption>
+      </figure>
     </section>
 
-    <section class="field-note" id="run" aria-labelledby="run-title">
-      <div class="field-note-heading">
-        <h2 id="run-title">Run it where the agents run</h2>
-      </div>
-      <div class="field-note-body">
-        <p>Point an ACP-compatible editor at Acplane, select a configured harness, then index the resulting session log.</p>
+    <section class="run-section" id="run" aria-labelledby="run-title">
+      <div class="run-grid">
+        <div class="run-copy">
+          <h2 id="run-title">Run it where the agents run.</h2>
+          <p>Point an ACP-compatible editor at Acplane, select a configured harness, then index the resulting session log.</p>
+        </div>
         <pre aria-label="Acplane setup commands"><code>npm install
 npm run build
 node bin/acplane.mjs index
 node bin/acplane.mjs ui</code></pre>
       </div>
-    </section>
-
-    <section class="field-note field-note--failure" id="failure" aria-labelledby="failure-title">
-      <div class="field-note-heading">
-        <h2 id="failure-title">Observation fails open</h2>
-      </div>
-      <div class="field-note-body">
+      <aside class="failure-note" id="failure" aria-labelledby="failure-title">
+        <h3 id="failure-title">Observation fails open.</h3>
         <p>Recorder failures never block the session. Acplane reports the dropped telemetry and keeps forwarding the underlying traffic.</p>
-      </div>
+      </aside>
     </section>
   </main>
   <footer class="site-footer">
-    <p class="footer-statement">Inspect the boundary, then inspect the code.</p>
-    <a href="https://github.com/hrshl4codes/acplane">View on GitHub</a>
-    <p class="footer-meta">Apache-2.0 · TypeScript · Node.js · SQLite · ACP</p>
+    <div class="footer-action">
+      <p class="footer-statement">Inspect the boundary.<br>Then inspect the code.</p>
+      <a href="https://github.com/hrshl4codes/acplane">View on GitHub</a>
+    </div>
+    <div class="footer-meta">
+      <span>acplane</span>
+      <span>Apache-2.0 · TypeScript · Node.js · SQLite · ACP</span>
+    </div>
   </footer>
 </body>
 </html>
