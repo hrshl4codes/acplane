@@ -169,5 +169,79 @@ node bin/acplane.mjs ui</code></pre>
       <span>Apache-2.0 · TypeScript · Node.js · SQLite · ACP</span>
     </div>
   </footer>
+  <script type="module" data-signal-controller>
+    const chamber = document.querySelector("[data-signal-chamber]");
+
+    if (chamber) {
+      const planes = [...chamber.querySelectorAll("[data-plane]")];
+      const finePointer = matchMedia("(hover: hover) and (pointer: fine)").matches;
+      const reducedMotion = matchMedia("(prefers-reduced-motion: reduce)").matches;
+      const target = { tiltX: 57, tiltZ: -15, spread: 22 };
+      const value = { ...target };
+      const velocity = { tiltX: 0, tiltZ: 0, spread: 0 };
+      let framePending = false;
+
+      const wake = () => {
+        if (!reducedMotion && !framePending) {
+          framePending = true;
+          requestAnimationFrame(frame);
+        }
+      };
+
+      const setActive = (layer) => {
+        chamber.dataset.active = layer ?? "none";
+        for (const plane of planes) {
+          plane.setAttribute("aria-pressed", String(plane.dataset.plane === layer));
+        }
+        target.spread = layer ? 44 : 22;
+        wake();
+      };
+
+      const frame = () => {
+        framePending = false;
+        let active = false;
+
+        for (const key of ["tiltX", "tiltZ", "spread"]) {
+          const delta = target[key] - value[key];
+          velocity[key] = (velocity[key] + delta * 0.075) * 0.78;
+          value[key] += velocity[key];
+          active ||= Math.abs(delta) > 0.02 || Math.abs(velocity[key]) > 0.02;
+        }
+
+        chamber.style.setProperty("--tilt-x", `${value.tiltX.toFixed(2)}deg`);
+        chamber.style.setProperty("--tilt-z", `${value.tiltZ.toFixed(2)}deg`);
+        chamber.style.setProperty("--spread", `${value.spread.toFixed(2)}px`);
+        if (active) wake();
+      };
+
+      for (const plane of planes) {
+        plane.addEventListener("pointerenter", () => {
+          if (finePointer) setActive(plane.dataset.plane);
+        });
+        plane.addEventListener("focus", () => setActive(plane.dataset.plane));
+        plane.addEventListener("click", () => setActive(plane.dataset.plane));
+      }
+
+      if (finePointer && !reducedMotion) {
+        chamber.addEventListener("pointermove", (event) => {
+          const bounds = chamber.getBoundingClientRect();
+          const x = Math.min(1, Math.max(0, (event.clientX - bounds.left) / bounds.width));
+          const y = Math.min(1, Math.max(0, (event.clientY - bounds.top) / bounds.height));
+          target.tiltX = 53 + y * 9;
+          target.tiltZ = -21 + x * 12;
+          wake();
+        });
+        chamber.addEventListener("pointerleave", () => {
+          setActive(null);
+          Object.assign(target, { tiltX: 57, tiltZ: -15, spread: 22 });
+          wake();
+        });
+      }
+
+      document.addEventListener("pointerdown", (event) => {
+        if (!finePointer && !chamber.contains(event.target)) setActive(null);
+      });
+    }
+  </script>
 </body>
 </html>

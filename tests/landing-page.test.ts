@@ -1,9 +1,90 @@
 import { existsSync, readFileSync } from "node:fs";
 import { resolve } from "node:path";
+import { runInNewContext } from "node:vm";
 import { describe, expect, test } from "vitest";
 
 const root = resolve(import.meta.dirname, "..");
 const read = (path: string): string => readFileSync(resolve(root, path), "utf8");
+
+type Listener = (event: { clientX?: number; clientY?: number; target?: unknown }) => void;
+
+class FakeTarget {
+  readonly attributes = new Map<string, string>();
+  readonly dataset: Record<string, string> = {};
+  readonly listeners = new Map<string, Listener[]>();
+  readonly styleValues = new Map<string, string>();
+  children: FakeTarget[] = [];
+
+  readonly style = {
+    setProperty: (name: string, value: string): void => {
+      this.styleValues.set(name, value);
+    },
+  };
+
+  addEventListener(type: string, listener: Listener): void {
+    this.listeners.set(type, [...(this.listeners.get(type) ?? []), listener]);
+  }
+
+  dispatch(type: string, event: Parameters<Listener>[0] = {}): void {
+    for (const listener of this.listeners.get(type) ?? []) listener(event);
+  }
+
+  setAttribute(name: string, value: string): void {
+    this.attributes.set(name, value);
+  }
+
+  querySelectorAll(selector: string): FakeTarget[] {
+    return selector === "[data-plane]" ? this.children : [];
+  }
+
+  contains(target: unknown): boolean {
+    return target === this || this.children.includes(target as FakeTarget);
+  }
+
+  getBoundingClientRect(): { left: number; top: number; width: number; height: number } {
+    return { left: 0, top: 0, width: 1000, height: 500 };
+  }
+}
+
+const controllerSource = (): string | null => {
+  const match = read("site/index.html").match(
+    /<script\s+type="module"\s+data-signal-controller>([\s\S]*?)<\/script>/,
+  );
+  return match?.[1] ?? null;
+};
+
+const runController = (options: { fine?: boolean; reduced?: boolean; chamber?: boolean } = {}) => {
+  const source = controllerSource();
+  expect(source, "Signal Chamber controller script is missing").not.toBeNull();
+
+  const documentTarget = new FakeTarget();
+  const chamber = new FakeTarget();
+  chamber.dataset.active = "none";
+  const planes = ["proxy", "policy", "recorder"].map((name) => {
+    const plane = new FakeTarget();
+    plane.dataset.plane = name;
+    plane.attributes.set("aria-pressed", "false");
+    return plane;
+  });
+  chamber.children = planes;
+  const frames: Array<(time: number) => void> = [];
+
+  runInNewContext(source!, {
+    document: Object.assign(documentTarget, {
+      querySelector: (selector: string) =>
+        selector === "[data-signal-chamber]" && options.chamber !== false ? chamber : null,
+    }),
+    matchMedia: (query: string) => ({
+      matches: query.includes("hover") ? options.fine === true : options.reduced === true,
+    }),
+    requestAnimationFrame: (callback: (time: number) => void) => {
+      frames.push(callback);
+      return frames.length;
+    },
+  });
+
+  return { chamber, documentTarget, frames, planes };
+};
 
 describe("Acplane landing page", () => {
   test("ships a standalone page with one primary destination", () => {
@@ -181,5 +262,50 @@ describe("Acplane landing page", () => {
     expect(desktop).toMatch(/\.hero-main\s*\{[^}]*gap:\s*var\(--space-2xl\);/s);
     expect(html).toContain('class="signal-endpoint signal-endpoint--editor"');
     expect(html).toContain('class="signal-endpoint signal-endpoint--runtime"');
+  });
+
+  test("keeps one selected plane in sync across tap, focus, and outside reset", () => {
+    const { chamber, documentTarget, planes } = runController();
+
+    planes[1]!.dispatch("click");
+    expect(chamber.dataset.active).toBe("policy");
+    expect(planes.map((plane) => plane.attributes.get("aria-pressed"))).toEqual(["false", "true", "false"]);
+
+    planes[2]!.dispatch("focus");
+    expect(chamber.dataset.active).toBe("recorder");
+    expect(planes.map((plane) => plane.attributes.get("aria-pressed"))).toEqual(["false", "false", "true"]);
+
+    documentTarget.dispatch("pointerdown", { target: {} });
+    expect(chamber.dataset.active).toBe("none");
+  });
+
+  test("uses hover and a bounded spring only for fine pointers", () => {
+    const { chamber, frames, planes } = runController({ fine: true });
+
+    planes[0]!.dispatch("pointerenter");
+    expect(chamber.dataset.active).toBe("proxy");
+    chamber.dispatch("pointermove", { clientX: 750, clientY: 100 });
+    expect(frames).toHaveLength(1);
+
+    frames.shift()!(0);
+    expect(chamber.styleValues.get("--tilt-x")).toMatch(/deg$/);
+    expect(chamber.styleValues.get("--tilt-z")).toMatch(/deg$/);
+    expect(chamber.styleValues.get("--spread")).toMatch(/px$/);
+
+    chamber.dispatch("pointerleave");
+    expect(chamber.dataset.active).toBe("none");
+  });
+
+  test("keeps selection but schedules no spring frames under reduced motion", () => {
+    const { chamber, frames, planes } = runController({ fine: true, reduced: true });
+
+    planes[1]!.dispatch("focus");
+    chamber.dispatch("pointermove", { clientX: 750, clientY: 100 });
+    expect(chamber.dataset.active).toBe("policy");
+    expect(frames).toHaveLength(0);
+  });
+
+  test("progressively enhances without failing when the chamber is absent", () => {
+    expect(() => runController({ chamber: false })).not.toThrow();
   });
 });

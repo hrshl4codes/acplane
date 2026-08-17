@@ -413,12 +413,23 @@ p {
   background: var(--color-instrument-3);
   box-shadow: var(--shadow-plane);
   color: var(--color-instrument-ink);
+  cursor: pointer;
   font-family: var(--font-display);
   font-size: var(--text-md);
   font-weight: 700;
   letter-spacing: -0.035em;
   line-height: 1;
   text-align: end;
+  transition:
+    transform var(--dur-short) var(--ease-out),
+    border-color var(--dur-micro) var(--ease-out),
+    background-color var(--dur-micro) var(--ease-out),
+    box-shadow var(--dur-micro) var(--ease-out);
+}
+
+.signal-plane:focus-visible {
+  outline: var(--rule-strong) solid var(--color-signal);
+  outline-offset: var(--space-2xs);
 }
 
 .signal-plane span {
@@ -461,6 +472,7 @@ p {
   stroke-linejoin: round;
   stroke-width: 1.15;
   opacity: 0;
+  transition: opacity var(--dur-micro) var(--ease-out);
 }
 
 #signal-arrow path {
@@ -480,6 +492,9 @@ p {
   opacity: 0;
   pointer-events: none;
   transform: translateY(var(--space-xs));
+  transition:
+    opacity var(--dur-micro) var(--ease-out),
+    transform var(--dur-micro) var(--ease-out);
 }
 
 .signal-callout strong {
@@ -521,6 +536,29 @@ p {
   font-weight: 600;
   letter-spacing: 0.08em;
   text-transform: uppercase;
+}
+
+[data-active="proxy"] .signal-plane--proxy,
+[data-active="policy"] .signal-plane--policy,
+[data-active="recorder"] .signal-plane--recorder {
+  border-color: var(--color-signal);
+  background: var(--color-signal-soft);
+  box-shadow: var(--shadow-plane-active);
+}
+
+[data-active="proxy"] .signal-callout--proxy,
+[data-active="policy"] .signal-callout--policy,
+[data-active="recorder"] .signal-callout--recorder,
+[data-active="proxy"] .leader--proxy,
+[data-active="policy"] .leader--policy,
+[data-active="recorder"] .leader--recorder {
+  opacity: 1;
+}
+
+[data-active="proxy"] .signal-callout--proxy,
+[data-active="policy"] .signal-callout--policy,
+[data-active="recorder"] .signal-callout--recorder {
+  transform: translateY(0);
 }
 
 .fact-strip {
@@ -965,9 +1003,13 @@ pre {
   *,
   *::before,
   *::after {
-    animation-duration: var(--dur-micro) !important;
+    animation-duration: 0.01ms !important;
     animation-iteration-count: 1 !important;
-    transition-duration: var(--dur-micro) !important;
+    transition-duration: 0.01ms !important;
+  }
+
+  .signal-stack {
+    transform: rotateX(57deg) rotateZ(-15deg);
   }
 
 }
