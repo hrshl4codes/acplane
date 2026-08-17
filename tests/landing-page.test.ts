@@ -229,6 +229,24 @@ describe("Acplane landing page", () => {
     expect(css).not.toContain("100vw");
   });
 
+  test("prioritizes endpoint titles before metadata can collide at 320px", () => {
+    const css = read("site/styles.css");
+    const narrow = css.slice(css.indexOf("@media (max-width: 22rem)"));
+
+    expect(narrow).toMatch(/\.signal-endpoint\s*\{[^}]*min-width:\s*0;/s);
+    expect(narrow).toMatch(
+      /\.signal-endpoint small,\s*\.signal-endpoint span\s*\{[^}]*display:\s*none;/s,
+    );
+  });
+
+  test("keeps the sticky navigation clear of the Signal Chamber anchor", () => {
+    const css = read("site/styles.css");
+
+    expect(css).toMatch(
+      /\.signal-chamber\s*\{[^}]*scroll-margin-top:\s*var\(--space-3xl\);/s,
+    );
+  });
+
   test("gives links visible pointer, keyboard, and pressed states", () => {
     const css = read("site/styles.css");
     expect(css).toContain("@media (hover: hover) and (pointer: fine)");

@@ -265,6 +265,7 @@ p {
   min-width: 0;
   min-height: 34rem;
   overflow: hidden;
+  scroll-margin-top: var(--space-3xl);
   border-radius: var(--radius-xl);
   background-color: var(--color-instrument);
   background-image: var(--image-instrument-grid);
@@ -904,6 +905,17 @@ pre {
   .signal-hint {
     inset-inline-start: var(--space-md);
     inset-block-end: var(--space-md);
+  }
+}
+
+@media (max-width: 22rem) {
+  .signal-endpoint {
+    min-width: 0;
+  }
+
+  .signal-endpoint small,
+  .signal-endpoint span {
+    display: none;
   }
 }
 
