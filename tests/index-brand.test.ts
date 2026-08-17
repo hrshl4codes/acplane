@@ -1,6 +1,7 @@
 import { existsSync, mkdtempSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
+import { stripVTControlCharacters } from "node:util";
 import Database from "better-sqlite3";
 import { afterEach, expect, test, vi } from "vitest";
 import { runIndex } from "../src/index-cmd.js";
@@ -17,6 +18,10 @@ function createHumanOutput(isTTY: boolean): {
     write: (chunk: string) => (writes.push(chunk), true),
   } as NodeJS.WritableStream & { isTTY: boolean };
   return { humanOutput, writes };
+}
+
+function plainOutput(writes: string[]): string {
+  return stripVTControlCharacters(writes.join(""));
 }
 
 function writeSessionFile(parent: string): string {
@@ -61,7 +66,9 @@ test("TTY index output reveals the banner and finishes the spinner", async () =>
   const text = writes.join("");
   expect(text).toContain("__ _  ___ _ __");
   expect(text).toMatch(/v\d+\.\d+\.\d+/);
-  expect(text).toContain("✓ acplane: indexed 1 session(s), 1 turn(s), 0 tool call(s)");
+  expect(stripVTControlCharacters(text)).toContain(
+    "✓ acplane: indexed 1 session(s), 1 turn(s), 0 tool call(s)",
+  );
   expect(text).toContain("\r\x1b[2K");
   expect(vi.getTimerCount()).toBe(0);
 });
@@ -101,8 +108,8 @@ test("TTY empty sessions directory finishes with nothing to index", async () => 
   await vi.runAllTimersAsync();
 
   await expect(result).resolves.toBe(0);
-  expect(writes.join("")).toContain("✗ acplane: nothing to index");
-  expect(writes.join("")).not.toContain("indexed 0 session(s)");
+  expect(plainOutput(writes)).toContain("✗ acplane: nothing to index");
+  expect(plainOutput(writes)).not.toContain("indexed 0 session(s)");
   expect(vi.getTimerCount()).toBe(0);
 });
 
@@ -131,7 +138,7 @@ test("TTY indexing failure closes the database and spinner without masking the e
   await vi.advanceTimersByTimeAsync(480);
   await rejection;
 
-  expect(writes.join("")).toContain("✗ acplane: failed to index sessions");
+  expect(plainOutput(writes)).toContain("✗ acplane: failed to index sessions");
   expect(vi.getTimerCount()).toBe(0);
   expect(existsSync(`${dbPath}-wal`)).toBe(false);
   expect(existsSync(`${dbPath}-shm`)).toBe(false);
@@ -152,7 +159,7 @@ test("TTY database open failure terminates the spinner and preserves the SQLite 
   await vi.advanceTimersByTimeAsync(480);
   await rejection;
 
-  expect(writes.join("")).toContain("✗ acplane: failed to index sessions");
+  expect(plainOutput(writes)).toContain("✗ acplane: failed to index sessions");
   expect(vi.getTimerCount()).toBe(0);
 });
 
@@ -173,6 +180,6 @@ test("TTY database close failure terminates the spinner without masking the clos
   await vi.advanceTimersByTimeAsync(480);
   await rejection;
 
-  expect(writes.join("")).toContain("✗ acplane: failed to index sessions");
+  expect(plainOutput(writes)).toContain("✗ acplane: failed to index sessions");
   expect(vi.getTimerCount()).toBe(0);
 });
